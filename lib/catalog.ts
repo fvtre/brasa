@@ -1,0 +1,106 @@
+import type { Category, CategorySlug } from "./types"
+
+export const CATEGORIES: Category[] = [
+  {
+    slug: "parrilleros",
+    name: "Parrilleros",
+    icon: "Flame",
+    tagline: "Asados y parrilla",
+    description: "Maestros del fuego para tu asado: cortes, punto perfecto y show en vivo.",
+    image: "/images/cat-parrilleros.png",
+    priceFrom: 70000,
+  },
+  {
+    slug: "bartenders",
+    name: "Bartenders",
+    icon: "Martini",
+    tagline: "Coctelería & barra",
+    description: "Coctelería de autor, barra montada y tragos de bienvenida para tus invitados.",
+    image: "/images/cat-bartenders.png",
+    priceFrom: 65000,
+  },
+  {
+    slug: "garzones",
+    name: "Garzones",
+    icon: "ConciergeBell",
+    tagline: "Atención de invitados",
+    description: "Servicio de garzones profesionales para atención de mesas y bebidas.",
+    image: "/images/cat-garzones.png",
+    priceFrom: 40000,
+  },
+  {
+    slug: "catering",
+    name: "Catering & Picoteo",
+    icon: "UtensilsCrossed",
+    tagline: "Comida para el evento",
+    description: "Tablas, picoteos, banquetería y menús a medida para cualquier ocasión.",
+    image: "/images/cat-catering.png",
+    priceFrom: 90000,
+  },
+  {
+    slug: "pasteleria",
+    name: "Pastelería",
+    icon: "CakeSlice",
+    tagline: "Tortas & dulces",
+    description: "Tortas personalizadas, mesas dulces y postres para celebraciones.",
+    image: "/images/cat-pasteleria.png",
+    priceFrom: 35000,
+  },
+  {
+    slug: "dj",
+    name: "DJ & Música",
+    icon: "Disc3",
+    tagline: "Música y ambiente",
+    description: "DJ con equipo profesional, iluminación y la mejor música para tu fiesta.",
+    image: "/images/cat-dj.png",
+    priceFrom: 120000,
+  },
+  {
+    slug: "decoracion",
+    name: "Decoración",
+    icon: "PartyPopper",
+    tagline: "Ambientación",
+    description: "Globos, arcos, centros de mesa y ambientación temática completa.",
+    image: "/images/cat-decoracion.png",
+    priceFrom: 55000,
+  },
+  {
+    slug: "fotografia",
+    name: "Fotografía",
+    icon: "Camera",
+    tagline: "Foto & video",
+    description: "Cobertura fotográfica y de video para inmortalizar tu evento.",
+    image: "/images/cat-fotografia.png",
+    priceFrom: 100000,
+  },
+  {
+    slug: "mobiliario",
+    name: "Mobiliario",
+    icon: "Armchair",
+    tagline: "Equipamiento",
+    description: "Arriendo de mesas, sillas, toldos, vajilla y todo el equipamiento.",
+    image: "/images/cat-mobiliario.png",
+    priceFrom: 45000,
+  },
+]
+
+export function getCategory(slug: CategorySlug | string): Category | undefined {
+  return CATEGORIES.find((c) => c.slug === slug)
+}
+
+export const COMUNAS: string[] = [
+  "Providencia",
+  "Las Condes",
+  "Ñuñoa",
+  "Santiago Centro",
+  "La Florida",
+  "Puente Alto",
+  "Maipú",
+  "Vitacura",
+  "La Reina",
+  "San Miguel",
+  "Peñalolén",
+  "Macul",
+  "Recoleta",
+  "Estación Central",
+]

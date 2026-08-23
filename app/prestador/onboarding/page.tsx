@@ -1,0 +1,17 @@
+'use client'
+import * as React from 'react'
+import { useRouter } from 'next/navigation'
+import { BriefcaseBusiness, LoaderCircle } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Card,CardContent,CardHeader,CardTitle } from '@/components/ui/card'
+import { CATEGORIES, COMUNAS } from '@/lib/catalog'
+
+export default function ProviderOnboarding(){
+ const router=useRouter(); const supabase=React.useMemo(()=>createClient(),[]); const [busy,setBusy]=React.useState(false); const [error,setError]=React.useState('')
+ const [f,setF]=React.useState({businessName:'',category:'parrilleros',tagline:'',bio:'',comuna:'',experienceYears:0})
+ async function submit(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');const {data:{user}}=await supabase.auth.getUser();if(!user){router.push('/login');return}const slug=`${f.businessName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')}-${user.id.slice(0,6)}`;const {error}=await supabase.from('service_providers').insert({owner_id:user.id,slug,business_name:f.businessName,category_slug:f.category,tagline:f.tagline,bio:f.bio,comuna:f.comuna,experience_years:Number(f.experienceYears)||0,coverage:f.comuna?[f.comuna]:[]});if(error){setError(error.message);setBusy(false);return}router.replace('/prestador/dashboard');router.refresh()}
+ return <div className="mx-auto max-w-2xl px-4 py-12"><Card className="rounded-2xl"><CardHeader><BriefcaseBusiness className="size-7 text-primary"/><CardTitle className="text-2xl">Configura tu perfil de prestador</CardTitle><p className="text-sm text-muted-foreground">Después podrás crear servicios, precios y disponibilidad.</p></CardHeader><CardContent><form onSubmit={submit} className="space-y-4"><label className="grid gap-1.5 text-sm">Nombre comercial<Input required value={f.businessName} onChange={e=>setF({...f,businessName:e.target.value})}/></label><div className="grid gap-4 sm:grid-cols-2"><label className="grid gap-1.5 text-sm">Categoría<select className="h-9 rounded-lg border bg-background px-3" value={f.category} onChange={e=>setF({...f,category:e.target.value})}>{CATEGORIES.map(c=><option key={c.slug} value={c.slug}>{c.name}</option>)}</select></label><label className="grid gap-1.5 text-sm">Comuna<select required className="h-9 rounded-lg border bg-background px-3" value={f.comuna} onChange={e=>setF({...f,comuna:e.target.value})}><option value="">Selecciona</option>{COMUNAS.map(c=><option key={c}>{c}</option>)}</select></label></div><label className="grid gap-1.5 text-sm">Frase de presentación<Input value={f.tagline} onChange={e=>setF({...f,tagline:e.target.value})} placeholder="Ej: Coctelería de autor para tus invitados"/></label><label className="grid gap-1.5 text-sm">Sobre tu servicio<Textarea rows={5} value={f.bio} onChange={e=>setF({...f,bio:e.target.value})}/></label><label className="grid gap-1.5 text-sm">Años de experiencia<Input type="number" min={0} value={f.experienceYears} onChange={e=>setF({...f,experienceYears:Number(e.target.value)})}/></label>{error&&<p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}<Button type="submit" className="w-full" disabled={busy}>{busy?<LoaderCircle className="animate-spin"/>:<BriefcaseBusiness/>}{busy?'Guardando...':'Crear perfil profesional'}</Button></form></CardContent></Card></div>
+}
