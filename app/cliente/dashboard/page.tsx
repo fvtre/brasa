@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { formatCLP } from '@/lib/format'
+import { BookingExpiryCountdown } from '@/components/booking-expiry-countdown'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -40,6 +41,7 @@ type BookingRow = {
   address: string
   guests: number
   created_at: string
+  category_slug: string | null
 }
 
 export default async function ClientDashboard() {
@@ -59,7 +61,7 @@ export default async function ClientDashboard() {
     data: rpcBookings,
     error: rpcError,
   } = await supabase.rpc(
-    'get_my_bookings'
+    'get_my_bookings_with_category'
   )
 
   let bookings =
@@ -153,6 +155,8 @@ export default async function ClientDashboard() {
         ![
           'completada',
           'cancelada',
+          'expirada',
+          'rechazada',
         ].includes(
           booking.status
         )
@@ -169,8 +173,13 @@ export default async function ClientDashboard() {
     bookings
       .filter(
         (booking) =>
-          booking.status !==
-          'cancelada'
+          ![
+            'cancelada',
+            'expirada',
+            'rechazada',
+          ].includes(
+            booking.status
+          )
       )
       .reduce(
         (
@@ -179,12 +188,10 @@ export default async function ClientDashboard() {
         ) =>
           sum +
           Number(
-            booking.total ||
-              0
+            booking.total || 0
           ),
         0
       )
-
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       {/* HEADER */}
@@ -300,18 +307,22 @@ export default async function ClientDashboard() {
                   >
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-3">
                           <h3 className="font-bold">
-                            {
-                              booking.event_name
-                            }
+                            {booking.event_name}
                           </h3>
 
                           <StatusBadge
-                            status={
-                              booking.status
-                            }
+                            status={booking.status}
                           />
+
+                          <div className="flex items-center self-center">
+                            <BookingExpiryCountdown
+                              type="client"
+                              bookingId={booking.id}
+                              status={booking.status}
+                            />
+                          </div>
                         </div>
 
                         <p className="mt-1 text-xs text-muted-foreground">
@@ -319,6 +330,7 @@ export default async function ClientDashboard() {
                             booking.code
                           }
                         </p>
+
 
                         <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
                           <span className="flex items-center gap-2">
@@ -353,6 +365,36 @@ export default async function ClientDashboard() {
                             invitados
                           </span>
                         </div>
+                        {booking.status === 'expirada' && (
+                          <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                            <p className="text-sm font-semibold text-amber-700">
+                              El prestador no alcanzó a responder
+                            </p>
+
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Pasaron los 10 minutos de confirmación.
+                              El horario fue liberado y puedes buscar
+                              otro prestador para tu evento.
+                            </p>
+
+                            <Button
+                              nativeButton={false}
+                              size="sm"
+                              variant="outline"
+                              className="mt-3"
+                              render={
+                                <Link
+                                  href={`/proveedores?date=${booking.event_date}&time=${booking.event_time?.slice(0, 5)}&guests=${booking.guests || 0}&category=${booking.category_slug || ''}`}
+                                >
+                                  Buscar otro prestador
+                                </Link>
+                              }
+                            >
+                              Buscar otro prestador
+                              <ArrowRight className="size-4" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
 
                       <div className="text-right">
@@ -482,7 +524,34 @@ function StatusBadge({
 }: {
   status: string
 }) {
+  const labels: Record<
+    string,
+    string
+  > = {
+    confirmada:
+      'Confirmada',
+
+    completada:
+      'Completada',
+
+    cancelada:
+      'Cancelada',
+
+    rechazada:
+      'Rechazada',
+
+    expirada:
+      'Solicitud expirada',
+
+    esperando_confirmacion:
+      'Esperando confirmación',
+
+    pendiente:
+      'Pendiente',
+  }
+
   const label =
+    labels[status] ||
     status.replaceAll(
       '_',
       ' '
@@ -491,20 +560,22 @@ function StatusBadge({
   const classes =
     status === 'confirmada'
       ? 'bg-emerald-500/10 text-emerald-700'
-      : status ===
-          'completada'
+      : status === 'completada'
         ? 'bg-primary/10 text-primary'
-        : status ===
-            'cancelada'
-          ? 'bg-destructive/10 text-destructive'
-          : status ===
-              'esperando_confirmacion'
-            ? 'bg-amber-500/10 text-amber-700'
-            : 'bg-muted text-muted-foreground'
+        : status === 'expirada'
+          ? 'bg-amber-500/10 text-amber-700'
+          : status === 'rechazada'
+            ? 'bg-destructive/10 text-destructive'
+            : status === 'cancelada'
+              ? 'bg-destructive/10 text-destructive'
+              : status ===
+                'esperando_confirmacion'
+                ? 'bg-amber-500/10 text-amber-700'
+                : 'bg-muted text-muted-foreground'
 
   return (
     <span
-      className={`rounded-full px-2.5 py-1 text-[11px] font-medium capitalize ${classes}`}
+      className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${classes}`}
     >
       {label}
     </span>

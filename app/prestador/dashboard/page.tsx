@@ -317,7 +317,7 @@ export default async function ProviderDashboard() {
             </div>
 
             <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_340px]">
-                <Card>
+                <Card id="solicitudes" className="scroll-mt-24">
                     <CardHeader>
                         <CardTitle>
                             Solicitudes recientes
