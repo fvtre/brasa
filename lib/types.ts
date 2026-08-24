@@ -27,9 +27,41 @@ export interface ProviderService {
   name: string
   description: string
   price: number
-  /** e.g. "por evento", "por persona", "por hora" */
+
+  /** por evento | por persona | por hora */
   unit: string
+
   popular?: boolean
+
+  // Capacidad
+  min_guests?: number | null
+  max_guests?: number | null
+
+  // Duración
+  duration_hours?: number | null
+  extra_hour_price?: number | null
+
+  // Parrilla
+  grill_available?: boolean
+  grill_price?: number
+
+  // Traslado
+  transport_available?: boolean
+  transport_price?: number
+
+  // Gestión de compras
+  shopping_available?: boolean
+  shopping_fee_type?: "fixed" | "percentage"
+  shopping_fee?: number
+
+  // Paquete Full Brasa
+  full_package_enabled?: boolean
+  full_package_discount_type?: "percentage" | "fixed"
+  full_package_discount?: number
+
+  // Detalle
+  includes?: string[]
+  excludes?: string[]
 }
 
 export interface Review {
