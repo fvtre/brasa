@@ -30,6 +30,9 @@ export function SiteFooter() {
             <li><Link href="/categorias/parrilleros" className="hover:text-foreground">Parrilleros</Link></li>
             <li><Link href="/categorias/bartenders" className="hover:text-foreground">Bartenders</Link></li>
             <li><Link href="/categorias/catering" className="hover:text-foreground">Catering</Link></li>
+            <li><Link href="/categorias/parrilleros-veganos" className="hover:text-foreground">Parrilleros</Link></li>
+
+            
           </ul>
         </div>
         <div>
