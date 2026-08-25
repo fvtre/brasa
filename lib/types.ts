@@ -8,6 +8,7 @@ export type CategorySlug =
   | "decoracion"
   | "fotografia"
   | "mobiliario"
+  | "parrilleros-veganos"
 
 export interface Category {
   slug: CategorySlug

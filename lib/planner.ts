@@ -35,6 +35,7 @@ const NEED_RULES: NeedRule[] = [
   { category: "decoracion", keywords: ["decoracion", "decoración", "globos", "ambientacion", "ambientación", "adorno"] },
   { category: "fotografia", keywords: ["foto", "fotografia", "fotografía", "video", "recuerdo"] },
   { category: "mobiliario", keywords: ["mesa", "silla", "toldo", "mobiliario", "equipamiento", "vajilla"] },
+  { category: "parrilleros-veganos", keywords: ["asado", "parrilla", "parrillero", "carne", "churrasco", "anticucho"] },
 ]
 
 function parseGuests(text: string): number {

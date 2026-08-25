@@ -82,6 +82,15 @@ export const CATEGORIES: Category[] = [
     image: "/images/cat-mobiliario.png",
     priceFrom: 45000,
   },
+  {
+    slug: "parrilleros-veganos",
+    name: "Parrilleros Veganos",
+    icon: "Flame",
+    tagline: "Asados y parrilla",
+    description: "Maestros del fuego para tu asado: cortes, punto perfecto y show en vivo.",
+    image: "/images/cat-parrilleros.png",
+    priceFrom: 70000,
+  },
 ]
 
 export function getCategory(slug: CategorySlug | string): Category | undefined {
