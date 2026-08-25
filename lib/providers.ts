@@ -33,6 +33,6 @@ export function getProvidersByCategory(
 ): Provider[] {
   return PROVIDERS.filter(
     provider =>
-      provider.category === category
+      provider.categories.includes(category)
   )
 }

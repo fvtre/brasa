@@ -17,11 +17,13 @@ import { Badge } from "@/components/ui/badge"
 
 export function ProviderCard({
   provider,
+  categorySlug,
 }: {
   provider: Provider
+  categorySlug?: string
 }) {
   const category =
-    getCategory(provider.category)
+    getCategory(categorySlug || provider.category)
 
   const hasAvailability =
     provider.availableDays.length > 0
@@ -37,7 +39,7 @@ export function ProviderCard({
 
   return (
     <Link
-      href={`/proveedores/${provider.id}`}
+      href={`/proveedores/${provider.id}?categoria=${category?.slug || provider.category}`}
       className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
     >
       {/* IMAGEN */}

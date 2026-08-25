@@ -32,6 +32,7 @@ import {
 type AvailabilityRow = {
   id: string
   provider_id?: string
+  category_slug: string | null
   date: string
   start_time: string | null
   end_time: string | null
@@ -118,6 +119,12 @@ export default function AvailabilityPage() {
     providerId,
     setProviderId,
   ] = React.useState('')
+
+  const [providerCategories, setProviderCategories] =
+    React.useState<string[]>([])
+
+  const [selectedCategory, setSelectedCategory] =
+    React.useState('')
 
   const [
     rows,
@@ -299,6 +306,34 @@ export default function AvailabilityPage() {
             provider.id
           )
 
+          const { data: categoriesData, error: categoriesError } =
+            await supabase
+              .from('provider_categories')
+              .select('category_slug')
+              .eq('provider_id', provider.id)
+              .order('category_slug')
+
+          if (categoriesError) {
+            throw categoriesError
+          }
+
+          const categories = (categoriesData || [])
+            .map((item) => item.category_slug)
+            .filter(Boolean)
+
+          const categoryToLoad =
+            categories.includes(selectedCategory)
+              ? selectedCategory
+              : categories[0] || ''
+
+          setProviderCategories(categories)
+          setSelectedCategory(categoryToLoad)
+
+          if (!categoryToLoad) {
+            setRows([])
+            return
+          }
+
           const {
             data,
             error:
@@ -309,12 +344,13 @@ export default function AvailabilityPage() {
                 'provider_availability'
               )
               .select(
-                'id,provider_id,date,start_time,end_time,available,notes'
+                'id,provider_id,category_slug,date,start_time,end_time,available,notes'
               )
               .eq(
                 'provider_id',
                 provider.id
               )
+              .eq('category_slug', categoryToLoad)
               .gte(
                 'date',
                 today
@@ -368,6 +404,7 @@ export default function AvailabilityPage() {
         router,
         supabase,
         today,
+        selectedCategory,
       ]
     )
 
@@ -485,6 +522,7 @@ export default function AvailabilityPage() {
     if (
       busy ||
       !providerId
+      || !selectedCategory
     ) {
       return
     }
@@ -514,6 +552,9 @@ export default function AvailabilityPage() {
           .insert({
             provider_id:
               providerId,
+
+            category_slug:
+              selectedCategory,
 
             date:
               f.date,
@@ -783,6 +824,9 @@ export default function AvailabilityPage() {
             provider_id:
               providerId,
 
+            category_slug:
+              selectedCategory,
+
             date:
               duplicateDate,
 
@@ -981,6 +1025,25 @@ export default function AvailabilityPage() {
           </div>
         </div>
       </div>
+
+      <label className="mt-6 grid max-w-sm gap-1.5 text-sm">
+        Categoría que quieres configurar
+        <select
+          className="h-10 rounded-lg border bg-background px-3"
+          value={selectedCategory}
+          disabled={busy}
+          onChange={(event) => {
+            setEditingId(null)
+            setSelectedCategory(event.target.value)
+          }}
+        >
+          {providerCategories.map((categorySlug) => (
+            <option key={categorySlug} value={categorySlug}>
+              {categorySlug}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[360px_1fr]">
 

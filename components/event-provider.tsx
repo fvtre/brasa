@@ -24,6 +24,8 @@ export interface EventSelection {
   price: number
   unit: string
 
+  quantity?: number
+
   /*
    * Datos originales del servicio.
    */
@@ -60,8 +62,8 @@ export interface EventSelection {
   wantsShopping?: boolean
 
   shoppingFeeType?:
-    | "fixed"
-    | "percentage"
+  | "fixed"
+  | "percentage"
 
   shoppingFee?: number
 
@@ -73,8 +75,8 @@ export interface EventSelection {
   fullPackage?: boolean
 
   fullPackageDiscountType?:
-    | "percentage"
-    | "fixed"
+  | "percentage"
+  | "fixed"
 
   fullPackageDiscount?: number
 
@@ -272,7 +274,7 @@ export function EventProvider({
             1,
             Math.floor(
               Number(value) ||
-                1
+              1
             )
           )
 
@@ -377,7 +379,7 @@ export function EventProvider({
           }
         }
       } catch (
-        error
+      error
       ) {
         console.error(
           "No se pudo restaurar el evento local",
@@ -446,8 +448,8 @@ export function EventProvider({
         const unitPrice =
           Number(
             selection.baseUnitPrice ??
-              selection.price ??
-              0
+            selection.price ??
+            0
           )
 
         /*
@@ -470,8 +472,8 @@ export function EventProvider({
           baseTotal =
             Number(
               selection.basePrice ??
-                selection.price ??
-                0
+              selection.price ??
+              0
             )
         }
 
@@ -486,7 +488,7 @@ export function EventProvider({
           extras +=
             Number(
               selection.grillPrice ||
-                0
+              0
             )
         }
 
@@ -496,19 +498,19 @@ export function EventProvider({
           extras +=
             Number(
               selection.transportPrice ||
-                0
+              0
             )
         }
 
         if (
           selection.wantsShopping &&
           selection.shoppingFeeType ===
-            "fixed"
+          "fixed"
         ) {
           extras +=
             Number(
               selection.shoppingFee ||
-                0
+              0
             )
         }
 
@@ -527,7 +529,7 @@ export function EventProvider({
             extras +=
               Number(
                 selection.grillPrice ||
-                  0
+                0
               )
           }
 
@@ -537,19 +539,19 @@ export function EventProvider({
             extras +=
               Number(
                 selection.transportPrice ||
-                  0
+                0
               )
           }
 
           if (
             selection.shoppingAvailable &&
             selection.shoppingFeeType ===
-              "fixed"
+            "fixed"
           ) {
             extras +=
               Number(
                 selection.shoppingFee ||
-                  0
+                0
               )
           }
         }
@@ -568,7 +570,7 @@ export function EventProvider({
           const discountValue =
             Number(
               selection.fullPackageDiscount ||
-                0
+              0
             )
 
           if (
@@ -748,9 +750,9 @@ export function EventProvider({
               ) => {
                 const matches =
                   selection.serviceId ===
-                    serviceId &&
+                  serviceId &&
                   selection.providerId ===
-                    providerId
+                  providerId
 
                 if (
                   !matches
@@ -839,9 +841,9 @@ export function EventProvider({
               selection
             ) =>
               selection.serviceId ===
-                serviceId &&
+              serviceId &&
               selection.providerId ===
-                providerId
+              providerId
           )
         }
 
@@ -948,7 +950,7 @@ export function EventProvider({
             },
 
             error:
-              authError,
+            authError,
           } =
             await supabase.auth.getUser()
 
@@ -985,6 +987,19 @@ export function EventProvider({
                 serviceName:
                   selection.serviceName,
 
+                /*
+                 * Solo tendrá importancia
+                 * para cobro por unidad.
+                 */
+                quantity:
+                  Math.max(
+                    1,
+                    Number(
+                      selection.quantity ||
+                      1
+                    )
+                  ),
+
                 wantsGrill:
                   !!selection.wantsGrill,
 
@@ -998,17 +1013,16 @@ export function EventProvider({
                   !!selection.fullPackage,
               })
             )
-
           /* ===============================================
              RPC SUPABASE
           =============================================== */
 
           const {
             data:
-              result,
+            result,
 
             error:
-              bookingError,
+            bookingError,
           } =
             await supabase.rpc(
               "create_brasa_booking",
@@ -1068,7 +1082,7 @@ export function EventProvider({
 
             throw new Error(
               bookingError.message ||
-                "No se pudo crear la reserva."
+              "No se pudo crear la reserva."
             )
           }
 
@@ -1117,11 +1131,11 @@ export function EventProvider({
             total:
               Number(
                 booking.total ||
-                  0
+                0
               ),
           }
         } catch (
-          error
+        error
         ) {
           console.error(
             "Error creando reserva:",

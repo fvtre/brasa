@@ -424,7 +424,7 @@ export default async function ClientDashboard() {
                       </div>
 
                       <Link
-                        href={`/mis-reservas?booking=${booking.code}`}
+                        href={`/mis-reservas/${encodeURIComponent(booking.code)}`}
                         className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
                       >
                         Ver detalle
@@ -561,9 +561,9 @@ function StatusBadge({
     status === 'confirmada'
       ? 'bg-emerald-500/10 text-emerald-700'
       : status === 'completada'
-        ? 'bg-primary/10 text-primary'
+        ? 'bg-emerald-500/10 text-emerald-700'
         : status === 'expirada'
-          ? 'bg-amber-500/10 text-amber-700'
+          ? 'bg-orange-500/10 text-orange-700'
           : status === 'rechazada'
             ? 'bg-destructive/10 text-destructive'
             : status === 'cancelada'

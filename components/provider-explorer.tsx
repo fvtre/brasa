@@ -55,6 +55,20 @@ type AlternativeRow = {
   unit: string | null
   duration_hours: number
   image_url: string | null
+  pricing_mode: "fixed" | "from" | "quote"
+}
+
+function formatClp(
+  value: number
+) {
+  return new Intl.NumberFormat(
+    "es-CL",
+    {
+      style: "currency",
+      currency: "CLP",
+      maximumFractionDigits: 0,
+    }
+  ).format(value)
 }
 
 export function ProviderExplorer({
@@ -407,6 +421,8 @@ export function ProviderExplorer({
 
               durationHours:
                 row.duration_hours,
+              pricingMode:
+                row.pricing_mode,
             })
           )
 
@@ -557,8 +573,9 @@ export function ProviderExplorer({
             const matchesCategory =
               category ===
               "all" ||
-              provider.category ===
-              category
+              provider.categories.includes(
+                category
+              )
 
             const matchesComuna =
               comuna ===
@@ -708,6 +725,125 @@ export function ProviderExplorer({
         item.slug ===
         searchCategory
     )?.name
+
+  const alternativeByProvider =
+    React.useMemo(() => {
+      const map =
+        new Map<
+          string,
+          AlternativeRow
+        >()
+
+      for (
+        const row
+        of alternativeRows
+      ) {
+        const existing =
+          map.get(
+            row.provider_slug
+          )
+
+        if (!existing) {
+          map.set(
+            row.provider_slug,
+            row
+          )
+
+          continue
+        }
+
+        /*
+         * Para mostrar una opción
+         * representativa en la card:
+         *
+         * precio conocido > quote
+         */
+        const rowHasPrice =
+          row.pricing_mode !==
+          "quote" &&
+          Number(row.price) > 0
+
+        const existingHasPrice =
+          existing.pricing_mode !==
+          "quote" &&
+          Number(existing.price) > 0
+
+        if (
+          rowHasPrice &&
+          !existingHasPrice
+        ) {
+          map.set(
+            row.provider_slug,
+            row
+          )
+
+          continue
+        }
+
+        /*
+         * Si ambos tienen precio,
+         * comparamos costo TOTAL.
+         */
+        if (
+          rowHasPrice &&
+          existingHasPrice
+        ) {
+          const guests =
+            Math.max(
+              1,
+              eventContext?.guests ||
+              1
+            )
+
+          const rowTotal =
+            (
+              row.unit ||
+              ""
+            )
+              .toLowerCase()
+              .includes(
+                "persona"
+              )
+              ? Number(
+                row.price
+              ) * guests
+              : Number(
+                row.price
+              )
+
+          const existingTotal =
+            (
+              existing.unit ||
+              ""
+            )
+              .toLowerCase()
+              .includes(
+                "persona"
+              )
+              ? Number(
+                existing.price
+              ) * guests
+              : Number(
+                existing.price
+              )
+
+          if (
+            rowTotal <
+            existingTotal
+          ) {
+            map.set(
+              row.provider_slug,
+              row
+            )
+          }
+        }
+      }
+
+      return map
+    }, [
+      alternativeRows,
+      eventContext?.guests,
+    ])
 
   const recommendedProvider =
     providers.find(
@@ -1254,31 +1390,191 @@ export function ProviderExplorer({
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
 
               {filtered.map(
-                provider => (
-                  <div
-                    key={
+                provider => {
+                  const alternative =
+                    alternativeByProvider.get(
                       provider.id
-                    }
-                    className="relative"
-                  >
+                    )
 
-                    {alternativeMode &&
-                      provider.id ===
-                      aiRecommendation
-                        ?.recommendedProviderId && (
+                  const isRecommended =
+                    alternativeMode &&
+                    provider.id ===
+                    aiRecommendation
+                      ?.recommendedProviderId
+
+                  const guests =
+                    Math.max(
+                      1,
+                      eventContext?.guests ||
+                      1
+                    )
+
+                  const unit =
+                    alternative?.unit ||
+                    "por evento"
+
+                  const isPerPerson =
+                    unit
+                      .toLowerCase()
+                      .includes(
+                        "persona"
+                      )
+
+                  const estimatedTotal =
+                    alternative &&
+                      alternative.pricing_mode !==
+                      "quote" &&
+                      Number(
+                        alternative.price
+                      ) > 0
+                      ? isPerPerson
+                        ? Number(
+                          alternative.price
+                        ) * guests
+                        : Number(
+                          alternative.price
+                        )
+                      : null
+
+                  return (
+                    <div
+                      key={
+                        provider.id
+                      }
+                      className="relative"
+                    >
+                      {isRecommended && (
                         <div className="pointer-events-none absolute left-3 top-3 z-20 inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[10px] font-semibold text-primary-foreground shadow-sm">
                           <Sparkles className="size-3" />
+
                           Recomendado por IA
                         </div>
                       )}
 
-                    <ProviderCard
-                      provider={
-                        provider
-                      }
-                    />
-                  </div>
-                )
+                      <ProviderCard
+                        provider={
+                          provider
+                        }
+                        categorySlug={
+                          category !== "all"
+                            ? category
+                            : undefined
+                        }
+                      />
+
+                      {alternativeMode &&
+                        alternative && (
+                          <div className="relative z-10 -mt-3 rounded-b-xl border border-t-0 bg-card px-4 pb-4 pt-5">
+
+                            <p className="text-xs font-medium text-muted-foreground">
+                              Servicio disponible para tu evento
+                            </p>
+
+                            <p className="mt-1 text-sm font-semibold">
+                              {
+                                alternative
+                                  .service_name
+                              }
+                            </p>
+
+                            <div className="mt-3">
+
+                              {alternative
+                                .pricing_mode ===
+                                "quote" ? (
+                                <>
+                                  <p className="text-base font-bold text-primary">
+                                    Solicitar cotización
+                                  </p>
+
+                                  <p className="mt-0.5 text-xs text-muted-foreground">
+                                    El prestador define el precio según los detalles de tu evento.
+                                  </p>
+                                </>
+                              ) : alternative
+                                .pricing_mode ===
+                                "from" ? (
+                                <>
+                                  <p className="text-base font-bold">
+                                    Desde{" "}
+                                    {formatClp(
+                                      Number(
+                                        alternative
+                                          .price
+                                      )
+                                    )}{" "}
+                                    <span className="text-xs font-normal text-muted-foreground">
+                                      {unit}
+                                    </span>
+                                  </p>
+
+                                  {estimatedTotal !==
+                                    null &&
+                                    isPerPerson && (
+                                      <p className="mt-0.5 text-xs text-muted-foreground">
+                                        Desde{" "}
+                                        {formatClp(
+                                          estimatedTotal
+                                        )}{" "}
+                                        estimados para{" "}
+                                        {guests}{" "}
+                                        invitados
+                                      </p>
+                                    )}
+                                </>
+                              ) : (
+                                <>
+                                  <p className="text-base font-bold">
+                                    {formatClp(
+                                      Number(
+                                        alternative
+                                          .price
+                                      )
+                                    )}{" "}
+                                    <span className="text-xs font-normal text-muted-foreground">
+                                      {unit}
+                                    </span>
+                                  </p>
+
+                                  {estimatedTotal !==
+                                    null &&
+                                    isPerPerson && (
+                                      <p className="mt-0.5 text-xs text-muted-foreground">
+                                        {formatClp(
+                                          estimatedTotal
+                                        )}{" "}
+                                        estimados para{" "}
+                                        {guests}{" "}
+                                        invitados
+                                      </p>
+                                    )}
+                                </>
+                              )}
+
+                            </div>
+
+                            {alternative
+                              .duration_hours >
+                              0 && (
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                  Duración:{" "}
+                                  {
+                                    alternative
+                                      .duration_hours
+                                  }{" "}
+                                  {alternative
+                                    .duration_hours ===
+                                    1
+                                    ? "hora"
+                                    : "horas"}
+                                </p>
+                              )}
+
+                          </div>
+                        )}
+                    </div>
+                  )
+                }
               )}
             </div>
           ) : (

@@ -25,6 +25,7 @@ export interface Category {
 
 export interface ProviderService {
   id: string
+  category_slug: CategorySlug
   name: string
   description: string
   price: number
@@ -72,10 +73,20 @@ export interface Review {
   comment: string
 }
 
+export interface ProviderCategoryProfile {
+  category_slug: CategorySlug
+  description: string
+  coverImage: string
+  gallery: string[]
+  availableDays: number[]
+}
+
 export interface Provider {
   id: string
   name: string
   category: CategorySlug
+  categories: CategorySlug[]
+  categoryProfiles: ProviderCategoryProfile[]
   comuna: string
   region: string
   rating: number

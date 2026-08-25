@@ -36,7 +36,9 @@ export default async function CategoryPage({
   const category = getCategory(slug)
   if (!category) notFound()
 
-  const dbProviders = (await getDbProviders()).filter((p) => p.category === category.slug)
+  const dbProviders = (await getDbProviders(category.slug)).filter((provider) =>
+    provider.categories.includes(category.slug)
+  )
   const providers = [...new Map([...getProvidersByCategory(category.slug), ...dbProviders].map((p) => [p.id, p])).values()]
 
   return (
@@ -71,7 +73,11 @@ export default async function CategoryPage({
         {providers.length > 0 ? (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {providers.map((provider) => (
-              <ProviderCard key={provider.id} provider={provider} />
+              <ProviderCard
+                key={provider.id}
+                provider={provider}
+                categorySlug={category.slug}
+              />
             ))}
           </div>
         ) : (

@@ -2,13 +2,16 @@ import type {
   Provider,
   CategorySlug,
   ProviderService,
+  ProviderCategoryProfile,
   Review,
 } from '@/lib/types'
 
 import { getCategory } from '@/lib/catalog'
 import { createClient } from '@/lib/supabase/server'
 
-export async function getDbProviders(): Promise<Provider[]> {
+export async function getDbProviders(
+  categorySlug?: CategorySlug
+): Promise<Provider[]> {
   try {
     const supabase = await createClient()
 
@@ -19,6 +22,12 @@ export async function getDbProviders(): Promise<Provider[]> {
       .from('service_providers')
       .select(`
         *,
+        categories:provider_categories(
+          category_slug,
+          description,
+          cover_image_url,
+          gallery:provider_category_gallery(image_url,sort_order,created_at)
+        ),
         services:provider_services(*),
         availability:provider_availability(*)
       `)
@@ -42,8 +51,8 @@ export async function getDbProviders(): Promise<Provider[]> {
       return []
     }
 
-    return (rows || []).map(
-      mapDbProvider
+    return (rows || []).map((row) =>
+      mapDbProvider(row, categorySlug)
     )
   } catch (error) {
     console.error(
@@ -56,7 +65,8 @@ export async function getDbProviders(): Promise<Provider[]> {
 }
 
 export async function getDbProvider(
-  slug: string
+  slug: string,
+  categorySlug?: CategorySlug
 ): Promise<Provider | null> {
   try {
     const supabase = await createClient()
@@ -68,6 +78,12 @@ export async function getDbProvider(
       .from('service_providers')
       .select(`
         *,
+        categories:provider_categories(
+          category_slug,
+          description,
+          cover_image_url,
+          gallery:provider_category_gallery(image_url,sort_order,created_at)
+        ),
         services:provider_services(*),
         availability:provider_availability(*),
         reviews(
@@ -93,7 +109,7 @@ export async function getDbProvider(
       return null
     }
 
-    return mapDbProvider(data)
+    return mapDbProvider(data, categorySlug)
   } catch (error) {
     console.error(
       `Error inesperado cargando prestador ${slug}:`,
@@ -105,16 +121,33 @@ export async function getDbProvider(
 }
 
 function mapDbProvider(
-  row: any
+  row: any,
+  requestedCategory?: CategorySlug
 ): Provider {
-  const category =
+  const legacyCategory =
     (
       row.category_slug ||
       'catering'
     ) as CategorySlug
 
-  const categoryData =
-    getCategory(category)
+  const category =
+    requestedCategory &&
+    (row.categories || []).some(
+      (item: any) => item.category_slug === requestedCategory
+    )
+      ? requestedCategory
+      : legacyCategory
+
+  const categoryData = getCategory(category)
+
+  const categories = Array.from(
+    new Set<CategorySlug>([
+      legacyCategory,
+      ...(row.categories || [])
+        .map((item: any) => item.category_slug)
+        .filter(Boolean),
+    ])
+  )
 
   // ============================================
   // SERVICIOS
@@ -124,7 +157,8 @@ function mapDbProvider(
     (row.services || [])
       .filter(
         (service: any) =>
-          service.active !== false
+          service.active !== false &&
+          (!requestedCategory || service.category_slug === category)
       )
       .sort(
         (a: any, b: any) =>
@@ -135,6 +169,9 @@ function mapDbProvider(
         id:
           service.external_key ||
           service.id,
+
+        category_slug:
+          (service.category_slug || legacyCategory) as CategorySlug,
 
         name:
           service.name ||
@@ -293,22 +330,39 @@ function mapDbProvider(
   // FOTO PRINCIPAL
   // ============================================
 
+  const selectedCategoryRow =
+    (row.categories || []).find(
+      (item: any) => item.category_slug === category
+    )
+
   const fallbackImage =
     categoryData?.image ||
     '/placeholder.jpg'
 
   const image =
-    row.image_url ||
+    selectedCategoryRow?.cover_image_url ||
+    (!requestedCategory ? row.image_url : null) ||
     fallbackImage
 
   // ============================================
   // GALERÍA
   // ============================================
 
-  const rawGallery =
-    Array.isArray(row.gallery)
-      ? row.gallery.filter(Boolean)
-      : []
+  const categoryGallery =
+    (selectedCategoryRow?.gallery || [])
+      .sort((a: any, b: any) =>
+        Number(a.sort_order || 0) - Number(b.sort_order || 0)
+      )
+      .map((item: any) => item.image_url)
+      .filter(Boolean)
+
+  const rawGallery = requestedCategory
+    ? categoryGallery
+    : categoryGallery.length > 0
+      ? categoryGallery
+      : Array.isArray(row.gallery)
+        ? row.gallery.filter(Boolean)
+        : []
 
   // Si tiene foto principal pero esa foto
   // todavía no está en gallery, la ponemos
@@ -335,10 +389,21 @@ function mapDbProvider(
     0
   )
 
-  const availableDays =
+  const categoryAvailability =
+    (row.availability || []).filter(
+      (item: any) => item.category_slug === category
+    )
+
+  const effectiveAvailability = categoryAvailability.length > 0
+    ? categoryAvailability
+    : (row.availability || []).filter(
+        (item: any) => item.category_slug == null
+      )
+
+  const availableDays: number[] =
     Array.from(
-      new Set(
-        (row.availability || [])
+      new Set<number>(
+        effectiveAvailability
           .filter(
             (availability: any) => {
               if (
@@ -427,6 +492,23 @@ function mapDbProvider(
           review.comment || '',
       }))
 
+  const categoryProfiles: ProviderCategoryProfile[] =
+    (row.categories || []).map((item: any) => ({
+      category_slug: item.category_slug as CategorySlug,
+      description: item.description || '',
+      coverImage:
+        item.cover_image_url ||
+        getCategory(item.category_slug)?.image ||
+        '/placeholder.jpg',
+      gallery: (item.gallery || [])
+        .sort((a: any, b: any) =>
+          Number(a.sort_order || 0) - Number(b.sort_order || 0)
+        )
+        .map((galleryItem: any) => galleryItem.image_url)
+        .filter(Boolean),
+      availableDays: [],
+    }))
+
   // ============================================
   // PROVIDER FINAL
   // ============================================
@@ -443,6 +525,10 @@ function mapDbProvider(
       'Prestador Brasa',
 
     category,
+
+    categories,
+
+    categoryProfiles,
 
     comuna:
       row.comuna ||
@@ -485,6 +571,7 @@ function mapDbProvider(
       'Servicios para tu evento',
 
     bio:
+      selectedCategoryRow?.description ||
       row.bio ||
       'Prestador registrado en Brasa.',
 

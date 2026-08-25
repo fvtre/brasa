@@ -1,12 +1,24 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { CalendarDays, MapPin, PartyPopper, Users } from 'lucide-react'
 import { requireRole } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { formatCLP } from '@/lib/format'
+import { bookingStatusClasses, bookingStatusLabel } from '@/lib/booking-status'
 
 export const dynamic = 'force-dynamic'
 
-export default async function MisReservasPage() {
+export default async function MisReservasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ booking?: string }>
+}) {
+  const { booking } = await searchParams
+
+  if (booking) {
+    redirect(`/mis-reservas/${encodeURIComponent(booking)}`)
+  }
+
   const { profile } = await requireRole(['cliente', 'administrador'])
   const supabase = await createClient()
 
@@ -50,8 +62,8 @@ export default async function MisReservasPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs text-muted-foreground">{booking.code}</span>
-                    <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold capitalize text-primary">
-                      {String(booking.status).replaceAll('_', ' ')}
+                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${bookingStatusClasses(booking.status)}`}>
+                      {bookingStatusLabel(booking.status)}
                     </span>
                   </div>
                   <h2 className="mt-2 text-xl font-bold">{booking.event_name}</h2>
@@ -72,13 +84,22 @@ export default async function MisReservasPage() {
                   <div key={item.id} className="rounded-lg bg-muted/50 p-3 text-sm">
                     <div className="flex items-center justify-between gap-2">
                       <b>{item.provider_name}</b>
-                      <span className="text-[11px] capitalize text-muted-foreground">
-                        {String(item.provider_status).replaceAll('_', ' ')}
+                      <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${bookingStatusClasses(item.provider_status)}`}>
+                        {bookingStatusLabel(item.provider_status)}
                       </span>
                     </div>
                     <p className="text-muted-foreground">{item.service_name}</p>
                   </div>
                 ))}
+              </div>
+
+              <div className="mt-4 flex justify-end border-t pt-4">
+                <Link
+                  href={`/mis-reservas/${encodeURIComponent(booking.code)}`}
+                  className="text-sm font-semibold text-primary hover:underline"
+                >
+                  Ver detalle
+                </Link>
               </div>
             </article>
           ))

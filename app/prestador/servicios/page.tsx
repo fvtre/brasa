@@ -12,6 +12,7 @@ import {
   Flame,
   LoaderCircle,
   Package,
+  Pencil,
   Plus,
   Power,
   ShoppingCart,
@@ -36,6 +37,7 @@ import { formatCLP } from '@/lib/format'
 
 type ProviderService = {
   id: string
+  category_slug: string
   name: string
   description: string | null
 
@@ -47,6 +49,14 @@ type ProviderService = {
 
   duration_hours: number | null
   extra_hour_price: number | null
+
+  duration_by_guests: boolean
+  duration_guest_threshold: number | null
+  extra_duration_hours: number | null
+  extra_duration_guest_block: number | null
+
+  buffer_before_minutes: number
+  buffer_after_minutes: number
 
   grill_available: boolean
   grill_price: number
@@ -80,47 +90,53 @@ type ProviderInfo = {
   category_slug: string
 }
 
+const BUFFER_OPTIONS = [0, 15, 30, 45, 60, 90, 120] as const
+
+type PricingUnit =
+  | 'por evento'
+  | 'por persona'
+  | 'por hora'
+  | 'por unidad'
+  | 'por pack'
+
 const INITIAL_FORM = {
+  categorySlug: '',
   name: '',
   description: '',
 
-  price: 12000,
-  unit: 'por persona',
+  price: 0,
+  unit: 'por evento' as PricingUnit,
 
-  minGuests: 10,
-  maxGuests: 60,
+  minGuests: 1,
+  maxGuests: 100,
 
-  durationHours: 5,
-  extraHourPrice: 25000,
+  durationHours: 3,
+  extraHourPrice: 0,
 
-  grillAvailable: true,
-  grillPrice: 35000,
+  durationByGuests: false,
+  durationGuestThreshold: 20,
+  extraDurationHours: 1,
+  extraDurationGuestBlock: 20,
 
-  transportAvailable: true,
-  transportPrice: 15000,
+  bufferBeforeMinutes: 0,
+  bufferAfterMinutes: 0,
 
-  shoppingAvailable: true,
-  shoppingFeeType:
-    'fixed' as
-    | 'fixed'
-    | 'percentage',
+  grillAvailable: false,
+  grillPrice: 0,
 
-  shoppingFee: 25000,
+  transportAvailable: false,
+  transportPrice: 0,
 
-  fullPackageEnabled: true,
+  shoppingAvailable: false,
+  shoppingFeeType: 'fixed' as 'fixed' | 'percentage',
+  shoppingFee: 0,
 
-  fullPackageDiscountType:
-    'percentage' as
-    | 'percentage'
-    | 'fixed',
+  fullPackageEnabled: false,
+  fullPackageDiscountType: 'percentage' as 'percentage' | 'fixed',
+  fullPackageDiscount: 0,
 
-  fullPackageDiscount: 10,
-
-  includesText:
-    'Preparación del asado\nUtensilios de trabajo\nServicio de parrillero',
-
-  excludesText:
-    'Carnes\nBebestibles\nHielo',
+  includesText: '',
+  excludesText: '',
 }
 
 export default function ProviderServicesPage() {
@@ -138,6 +154,11 @@ export default function ProviderServicesPage() {
     React.useState<ProviderInfo | null>(
       null
     )
+
+  const [
+    providerCategories,
+    setProviderCategories,
+  ] = React.useState<string[]>([])
 
   const [
     services,
@@ -159,6 +180,9 @@ export default function ProviderServicesPage() {
   ] =
     React.useState(false)
 
+  const [editingId, setEditingId] =
+    React.useState<string | null>(null)
+
   const [
     error,
     setError,
@@ -173,8 +197,8 @@ export default function ProviderServicesPage() {
       INITIAL_FORM
     )
 
-  const isGrillProvider =
-    provider?.category_slug ===
+  const isGrillService =
+    f.categorySlug ===
     'parrilleros'
 
   // ======================================================
@@ -246,6 +270,54 @@ export default function ProviderServicesPage() {
           setProvider(
             providerData
           )
+
+          const {
+            data: categoriesData,
+            error: categoriesError,
+          } =
+            await supabase
+              .from(
+                'provider_categories'
+              )
+              .select(
+                'category_slug'
+              )
+              .eq(
+                'provider_id',
+                providerData.id
+              )
+              .order(
+                'category_slug'
+              )
+
+          if (categoriesError) {
+            throw categoriesError
+          }
+
+          const categories = Array.from(
+            new Set(
+              (categoriesData || [])
+              .map((item) =>
+                String(
+                  item.category_slug || ''
+                ).trim()
+              )
+              .filter(Boolean)
+            )
+          )
+
+          setProviderCategories(
+            categories
+          )
+
+          setF((current) => ({
+            ...current,
+
+            categorySlug:
+              categories.includes(current.categorySlug)
+                ? current.categorySlug
+                : categories[0] || '',
+          }))
 
           const {
             data:
@@ -341,17 +413,34 @@ export default function ProviderServicesPage() {
       }
 
       if (
-        !Number.isFinite(
-          Number(
-            f.price
-          )
-        ) ||
-        Number(
-          f.price
-        ) < 0
+        !f.categorySlug ||
+        !providerCategories.includes(f.categorySlug)
       ) {
         throw new Error(
-          'Ingresa un precio válido.'
+          'Selecciona una categoría asociada a tu perfil.'
+        )
+      }
+
+      if (
+        !Number.isFinite(Number(f.price)) ||
+        Number(f.price) <= 0
+      ) {
+        throw new Error(
+          'Debes ingresar un precio mayor a $0 para publicar el servicio.'
+        )
+      }
+
+      const allowedUnits: PricingUnit[] = [
+        'por evento',
+        'por persona',
+        'por hora',
+        'por unidad',
+        'por pack',
+      ]
+
+      if (!allowedUnits.includes(f.unit as PricingUnit)) {
+        throw new Error(
+          'Selecciona una forma de cobro válida.'
         )
       }
 
@@ -385,6 +474,35 @@ export default function ProviderServicesPage() {
         )
       }
 
+      if (f.durationByGuests) {
+        if (
+          !Number.isFinite(Number(f.durationGuestThreshold)) ||
+          Number(f.durationGuestThreshold) <= 0
+        ) {
+          throw new Error(
+            'Indica cuántas personas cubre la duración base.'
+          )
+        }
+
+        if (
+          !Number.isFinite(Number(f.extraDurationHours)) ||
+          Number(f.extraDurationHours) <= 0
+        ) {
+          throw new Error(
+            'Indica cuántas horas se agregan cuando aumenta la cantidad de invitados.'
+          )
+        }
+
+        if (
+          !Number.isFinite(Number(f.extraDurationGuestBlock)) ||
+          Number(f.extraDurationGuestBlock) <= 0
+        ) {
+          throw new Error(
+            'Indica cada cuántas personas adicionales aumenta la duración.'
+          )
+        }
+      }
+
       if (
         f.fullPackageDiscountType ===
         'percentage' &&
@@ -406,20 +524,12 @@ export default function ProviderServicesPage() {
           f.excludesText
         )
 
-      const {
-        error:
-        insertError,
-      } =
-        await supabase
-          .from(
-            'provider_services'
-          )
-          .insert({
+      const serviceValues = {
             provider_id:
               provider.id,
 
-            external_key:
-              `custom-${Date.now()}`,
+            category_slug:
+              f.categorySlug,
 
             name:
               f.name.trim(),
@@ -435,6 +545,9 @@ export default function ProviderServicesPage() {
             unit:
               f.unit,
 
+            pricing_mode:
+              'fixed',
+
             min_guests:
               Number(
                 f.minGuests
@@ -448,7 +561,11 @@ export default function ProviderServicesPage() {
                 : null,
 
             duration_hours:
-              Number(f.durationHours),
+              f.durationHours
+                ? Number(
+                  f.durationHours
+                )
+                : null,
 
             extra_hour_price:
               Number(
@@ -456,13 +573,37 @@ export default function ProviderServicesPage() {
                 0
               ),
 
+            duration_by_guests:
+              f.durationByGuests,
+
+            duration_guest_threshold:
+              f.durationByGuests
+                ? Number(f.durationGuestThreshold)
+                : null,
+
+            extra_duration_hours:
+              f.durationByGuests
+                ? Number(f.extraDurationHours)
+                : null,
+
+            extra_duration_guest_block:
+              f.durationByGuests
+                ? Number(f.extraDurationGuestBlock)
+                : null,
+
+            buffer_before_minutes:
+              Number(f.bufferBeforeMinutes || 0),
+
+            buffer_after_minutes:
+              Number(f.bufferAfterMinutes || 0),
+
             grill_available:
-              isGrillProvider
+              isGrillService
                 ? f.grillAvailable
                 : false,
 
             grill_price:
-              isGrillProvider &&
+              isGrillService &&
                 f.grillAvailable
                 ? Number(
                   f.grillPrice ||
@@ -482,7 +623,7 @@ export default function ProviderServicesPage() {
                 : 0,
 
             shopping_available:
-              isGrillProvider
+              isGrillService
                 ? f.shoppingAvailable
                 : false,
 
@@ -490,7 +631,7 @@ export default function ProviderServicesPage() {
               f.shoppingFeeType,
 
             shopping_fee:
-              isGrillProvider &&
+              isGrillService &&
                 f.shoppingAvailable
                 ? Number(
                   f.shoppingFee ||
@@ -499,7 +640,7 @@ export default function ProviderServicesPage() {
                 : 0,
 
             full_package_enabled:
-              isGrillProvider
+              isGrillService
                 ? f.fullPackageEnabled
                 : false,
 
@@ -507,7 +648,7 @@ export default function ProviderServicesPage() {
               f.fullPackageDiscountType,
 
             full_package_discount:
-              isGrillProvider &&
+              isGrillService &&
                 f.fullPackageEnabled
                 ? Number(
                   f.fullPackageDiscount ||
@@ -518,36 +659,102 @@ export default function ProviderServicesPage() {
             includes,
             excludes,
 
-            active:
-              true,
+          }
+
+      const { error: saveError } = editingId
+        ? await supabase
+          .from('provider_services')
+          .update(serviceValues)
+          .eq('id', editingId)
+          .eq('provider_id', provider.id)
+        : await supabase
+          .from('provider_services')
+          .insert({
+            ...serviceValues,
+            external_key: `custom-${Date.now()}`,
+            active: true,
           })
 
       if (
-        insertError
+        saveError
       ) {
-        throw insertError
+        throw saveError
       }
 
       setF({
         ...INITIAL_FORM,
+        categorySlug:
+          providerCategories[0] || '',
       })
+      setEditingId(null)
 
       await load()
     } catch (
     err: any
     ) {
       console.error(
-        'Error creando servicio:',
+        'Error guardando servicio:',
         err
       )
 
       setError(
         err?.message ||
-        'No se pudo crear el servicio.'
+        'No se pudo guardar el servicio.'
       )
     } finally {
       setBusy(false)
     }
+  }
+
+  function edit(service: ProviderService) {
+    if (!providerCategories.includes(service.category_slug)) {
+      setError(
+        'La categoría de este servicio ya no está asociada a tu perfil.'
+      )
+      return
+    }
+
+    setEditingId(service.id)
+    setError('')
+    setF({
+      categorySlug: service.category_slug,
+      name: service.name,
+      description: service.description || '',
+      price: Number(service.price),
+      unit: service.unit as PricingUnit,
+      minGuests: Number(service.min_guests || 1),
+      maxGuests: Number(service.max_guests || 0),
+      durationHours: Number(service.duration_hours || 0),
+      extraHourPrice: Number(service.extra_hour_price || 0),
+      durationByGuests: Boolean(service.duration_by_guests),
+      durationGuestThreshold: Number(service.duration_guest_threshold || 20),
+      extraDurationHours: Number(service.extra_duration_hours || 1),
+      extraDurationGuestBlock: Number(service.extra_duration_guest_block || 20),
+      bufferBeforeMinutes: Number(service.buffer_before_minutes || 0),
+      bufferAfterMinutes: Number(service.buffer_after_minutes || 0),
+      grillAvailable: Boolean(service.grill_available),
+      grillPrice: Number(service.grill_price || 0),
+      transportAvailable: Boolean(service.transport_available),
+      transportPrice: Number(service.transport_price || 0),
+      shoppingAvailable: Boolean(service.shopping_available),
+      shoppingFeeType: service.shopping_fee_type || 'fixed',
+      shoppingFee: Number(service.shopping_fee || 0),
+      fullPackageEnabled: Boolean(service.full_package_enabled),
+      fullPackageDiscountType:
+        service.full_package_discount_type || 'percentage',
+      fullPackageDiscount: Number(service.full_package_discount || 0),
+      includesText: (service.includes || []).join('\n'),
+      excludesText: (service.excludes || []).join('\n'),
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setF({
+      ...INITIAL_FORM,
+      categorySlug: providerCategories[0] || '',
+    })
   }
 
   // ======================================================
@@ -694,7 +901,7 @@ export default function ProviderServicesPage() {
           )}
       </div>
 
-      {isGrillProvider && (
+      {isGrillService && (
         <div className="mt-6 rounded-2xl border border-primary/20 bg-primary/5 p-4">
           <div className="flex gap-3">
             <Flame className="mt-0.5 size-5 shrink-0 text-primary" />
@@ -754,6 +961,32 @@ export default function ProviderServicesPage() {
                 description="Información principal que verá el cliente."
               >
                 <label className="grid gap-1.5 text-sm">
+                  Categoría del servicio
+
+                  <select
+                    required
+                    className="h-10 rounded-lg border bg-background px-3"
+                    value={f.categorySlug}
+                    disabled={busy || providerCategories.length === 0}
+                    onChange={(event) =>
+                      setF({
+                        ...f,
+                        categorySlug: event.target.value,
+                      })
+                    }
+                  >
+                    <option value="" disabled>
+                      Selecciona una categoría
+                    </option>
+                    {providerCategories.map((categorySlug) => (
+                      <option key={categorySlug} value={categorySlug}>
+                        {categorySlug}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="grid gap-1.5 text-sm">
                   Nombre
 
                   <Input
@@ -765,7 +998,7 @@ export default function ProviderServicesPage() {
                       f.name
                     }
                     placeholder={
-                      isGrillProvider
+                      isGrillService
                         ? 'Ej: Parrillero Premium'
                         : 'Ej: Servicio Premium'
                     }
@@ -812,99 +1045,112 @@ export default function ProviderServicesPage() {
 
               {/* PRECIO */}
               <FormSection
-                icon={
-                  DollarIcon
-                }
-                title="Precio"
-                description="El cliente verá el cálculo automáticamente."
+                icon={DollarIcon}
+                title="Precio y forma de cobro"
+                description="Publica el precio real que cobrará este servicio."
               >
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="grid gap-1.5 text-sm">
-                    Precio
+                <label className="grid gap-1.5 text-sm">
+                  ¿Cómo cobras este servicio?
 
-                    <Input
-                      type="number"
-                      min={0}
-                      step={1000}
-                      required
-                      disabled={
-                        busy
-                      }
-                      value={
-                        f.price
-                      }
-                      onChange={(
-                        e
-                      ) =>
-                        setF({
-                          ...f,
-                          price:
-                            Number(
-                              e
-                                .target
-                                .value
-                            ),
-                        })
-                      }
-                    />
-                  </label>
+                  <select
+                    required
+                    className="h-10 rounded-lg border bg-background px-3"
+                    value={f.unit}
+                    disabled={busy}
+                    onChange={(e) =>
+                      setF({
+                        ...f,
+                        unit: e.target.value as PricingUnit,
+                      })
+                    }
+                  >
+                    <option value="por evento">Por evento</option>
+                    <option value="por persona">Por persona</option>
+                    <option value="por hora">Por hora</option>
+                    <option value="por unidad">Por unidad</option>
+                    <option value="por pack">Por pack</option>
+                  </select>
+                </label>
 
-                  <label className="grid gap-1.5 text-sm">
-                    Cobro
+                <label className="grid gap-1.5 text-sm">
+                  {f.unit === 'por persona'
+                    ? 'Precio por persona'
+                    : f.unit === 'por hora'
+                      ? 'Precio por hora'
+                      : f.unit === 'por unidad'
+                        ? 'Precio por unidad'
+                        : f.unit === 'por pack'
+                          ? 'Precio del pack'
+                          : 'Precio del evento'}
 
-                    <select
-                      className="h-10 rounded-lg border bg-background px-3"
-                      value={
-                        f.unit
-                      }
-                      disabled={
-                        busy
-                      }
-                      onChange={(
-                        e
-                      ) =>
-                        setF({
-                          ...f,
-                          unit:
-                            e
-                              .target
-                              .value,
-                        })
-                      }
-                    >
-                      <option value="por persona">
-                        Por persona
-                      </option>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1000}
+                    required
+                    disabled={busy}
+                    value={f.price || ''}
+                    placeholder="Ej: 65000"
+                    onChange={(e) =>
+                      setF({
+                        ...f,
+                        price: Number(e.target.value),
+                      })
+                    }
+                  />
+                </label>
 
-                      <option value="por evento">
-                        Por evento
-                      </option>
-
-                      <option value="por hora">
-                        Por hora
-                      </option>
-                    </select>
-                  </label>
-                </div>
-
-                {f.unit ===
-                  'por persona' && (
-                    <div className="rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">
-                      Ejemplo: para 30
-                      invitados, Brasa
-                      calculará{' '}
-                      <b className="text-foreground">
-                        {formatCLP(
-                          Number(
-                            f.price ||
-                            0
-                          ) *
-                          30
-                        )}
-                      </b>
-                      .
-                    </div>
+                <div className="rounded-xl border border-dashed p-3 text-xs text-muted-foreground">
+                  {f.unit === 'por evento' && (
+                    <>
+                      Este valor corresponde al servicio completo para un evento,
+                      dentro de las condiciones que definas abajo.
+                    </>
                   )}
+
+                  {f.unit === 'por persona' && (
+                    <>
+                      Brasa multiplicará este valor por la cantidad de invitados.
+                      {Number(f.price) > 0 && (
+                        <>
+                          {' '}Ejemplo para 30 personas:{' '}
+                          <b className="text-foreground">
+                            {formatCLP(Number(f.price) * 30)}
+                          </b>
+                          .
+                        </>
+                      )}
+                    </>
+                  )}
+
+                  {f.unit === 'por hora' && (
+                    <>
+                      Brasa calculará el valor según las horas requeridas.
+                      {Number(f.price) > 0 && (
+                        <>
+                          {' '}Ejemplo para 5 horas:{' '}
+                          <b className="text-foreground">
+                            {formatCLP(Number(f.price) * 5)}
+                          </b>
+                          .
+                        </>
+                      )}
+                    </>
+                  )}
+
+                  {f.unit === 'por unidad' && (
+                    <>
+                      Para servicios cobrados por cantidad, como sillas, mesas,
+                      equipos o productos.
+                    </>
+                  )}
+
+                  {f.unit === 'por pack' && (
+                    <>
+                      Para un paquete cerrado con un precio definido.
+                    </>
+                  )}
+                </div>
               </FormSection>
 
               {/* CAPACIDAD */}
@@ -972,31 +1218,24 @@ export default function ProviderServicesPage() {
               <FormSection
                 icon={Clock3}
                 title="Duración"
-                description="Duración incluida y valor de tiempo adicional."
+                description="Define cuánto dura el servicio y si el tiempo aumenta según la cantidad de invitados."
               >
                 <div className="grid grid-cols-2 gap-3">
                   <label className="grid gap-1.5 text-sm">
-                    Horas incluidas
+                    Duración base
 
                     <Input
                       type="number"
                       min={0.5}
                       step={0.5}
                       required
-                      value={
-                        f.durationHours
-                      }
-                      onChange={(
-                        e
-                      ) =>
+                      value={f.durationHours}
+                      onChange={(e) =>
                         setF({
                           ...f,
-                          durationHours:
-                            Number(
-                              e
-                                .target
-                                .value
-                            ),
+                          durationHours: Number(
+                            e.target.value
+                          ),
                         })
                       }
                     />
@@ -1009,24 +1248,197 @@ export default function ProviderServicesPage() {
                       type="number"
                       min={0}
                       step={1000}
-                      value={
-                        f.extraHourPrice
-                      }
-                      onChange={(
-                        e
-                      ) =>
+                      value={f.extraHourPrice}
+                      onChange={(e) =>
                         setF({
                           ...f,
-                          extraHourPrice:
-                            Number(
-                              e
-                                .target
-                                .value
-                            ),
+                          extraHourPrice: Number(
+                            e.target.value
+                          ),
                         })
                       }
                     />
+
+                    <span className="text-[11px] text-muted-foreground">
+                      Solo si el cliente solicita tiempo extra.
+                    </span>
                   </label>
+                </div>
+
+                <ToggleRow
+                  checked={f.durationByGuests}
+                  onChange={(checked) =>
+                    setF({
+                      ...f,
+                      durationByGuests: checked,
+                    })
+                  }
+                  label="La duración cambia según la cantidad de invitados"
+                />
+
+                {f.durationByGuests && (
+                  <div className="space-y-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <label className="grid gap-1.5 text-sm">
+                        La duración base cubre hasta
+
+                        <Input
+                          type="number"
+                          min={1}
+                          required
+                          value={f.durationGuestThreshold}
+                          onChange={(e) =>
+                            setF({
+                              ...f,
+                              durationGuestThreshold:
+                                Number(
+                                  e.target.value
+                                ),
+                            })
+                          }
+                        />
+
+                        <span className="text-[11px] text-muted-foreground">
+                          personas
+                        </span>
+                      </label>
+
+                      <label className="grid gap-1.5 text-sm">
+                        Agregar
+
+                        <Input
+                          type="number"
+                          min={0.5}
+                          step={0.5}
+                          required
+                          value={f.extraDurationHours}
+                          onChange={(e) =>
+                            setF({
+                              ...f,
+                              extraDurationHours:
+                                Number(
+                                  e.target.value
+                                ),
+                            })
+                          }
+                        />
+
+                        <span className="text-[11px] text-muted-foreground">
+                          horas
+                        </span>
+                      </label>
+
+                      <label className="grid gap-1.5 text-sm">
+                        Por cada
+
+                        <Input
+                          type="number"
+                          min={1}
+                          required
+                          value={f.extraDurationGuestBlock}
+                          onChange={(e) =>
+                            setF({
+                              ...f,
+                              extraDurationGuestBlock:
+                                Number(
+                                  e.target.value
+                                ),
+                            })
+                          }
+                        />
+
+                        <span className="text-[11px] text-muted-foreground">
+                          personas adicionales
+                        </span>
+                      </label>
+                    </div>
+
+                    <div className="rounded-lg bg-background/70 p-3 text-xs text-muted-foreground">
+                      Ejemplo con 50 invitados:{' '}
+                      <b className="text-foreground">
+                        {calculateServiceDuration(
+                          Number(f.durationHours),
+                          50,
+                          true,
+                          Number(
+                            f.durationGuestThreshold
+                          ),
+                          Number(
+                            f.extraDurationHours
+                          ),
+                          Number(
+                            f.extraDurationGuestBlock
+                          )
+                        )}{' '}
+                        horas
+                      </b>
+                      .
+                      {' '}Brasa usará esta duración para revisar y bloquear la agenda.
+                    </div>
+                  </div>
+                )}
+
+                {!f.durationByGuests && (
+                  <div className="rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">
+                    La duración será siempre de{' '}
+                    <b className="text-foreground">
+                      {f.durationHours} horas
+                    </b>
+                    , sin importar la cantidad de invitados.
+                  </div>
+                )}
+
+                <div className="space-y-3 rounded-xl border border-dashed p-4">
+                  <div>
+                    <p className="text-sm font-semibold">Tiempo operativo entre eventos</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Estos tiempos bloquean tu agenda para preparación y traslado, pero no se cobran al cliente ni aumentan la duración contratada.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="grid gap-1.5 text-sm">
+                      Preparación / traslado antes
+                      <select
+                        className="h-10 rounded-lg border bg-background px-3"
+                        value={f.bufferBeforeMinutes}
+                        disabled={busy}
+                        onChange={(e) =>
+                          setF({
+                            ...f,
+                            bufferBeforeMinutes: Number(e.target.value),
+                          })
+                        }
+                      >
+                        {BUFFER_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {formatBufferMinutes(option)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="grid gap-1.5 text-sm">
+                      Tiempo después del evento
+                      <select
+                        className="h-10 rounded-lg border bg-background px-3"
+                        value={f.bufferAfterMinutes}
+                        disabled={busy}
+                        onChange={(e) =>
+                          setF({
+                            ...f,
+                            bufferAfterMinutes: Number(e.target.value),
+                          })
+                        }
+                      >
+                        {BUFFER_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {formatBufferMinutes(option)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
                 </div>
               </FormSection>
 
@@ -1082,7 +1494,7 @@ export default function ProviderServicesPage() {
               </FormSection>
 
               {/* PARRILLERO */}
-              {isGrillProvider && (
+              {isGrillService && (
                 <>
                   <FormSection
                     icon={Flame}
@@ -1396,14 +1808,30 @@ export default function ProviderServicesPage() {
               >
                 {busy ? (
                   <LoaderCircle className="animate-spin" />
+                ) : editingId ? (
+                  <Pencil />
                 ) : (
                   <Plus />
                 )}
 
                 {busy
                   ? 'Guardando...'
-                  : 'Publicar servicio'}
+                  : editingId
+                    ? 'Guardar cambios'
+                    : 'Publicar servicio'}
               </Button>
+
+              {editingId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 w-full"
+                  disabled={busy}
+                  onClick={cancelEdit}
+                >
+                  Cancelar edición
+                </Button>
+              )}
             </form>
           </CardContent>
         </Card>
@@ -1437,6 +1865,7 @@ export default function ProviderServicesPage() {
                         service
                       )
                     }
+                    onEdit={() => edit(service)}
                     onRemove={() =>
                       remove(
                         service.id
@@ -1479,10 +1908,12 @@ export default function ProviderServicesPage() {
 function ServiceCard({
   service,
   onToggle,
+  onEdit,
   onRemove,
 }: {
   service: ProviderService
   onToggle: () => void
+  onEdit: () => void
   onRemove: () => void
 }) {
   const min =
@@ -1526,6 +1957,10 @@ function ServiceCard({
                 ? 'Activo'
                 : 'Pausado'}
             </span>
+
+            <SmallBadge>
+              {service.category_slug}
+            </SmallBadge>
           </div>
 
           {service.description && (
@@ -1573,14 +2008,28 @@ function ServiceCard({
 
             {service.duration_hours && (
               <SmallBadge>
-                {
-                  service.duration_hours
-                }{' '}
-                horas
+                {service.duration_by_guests
+                  ? `Desde ${service.duration_hours} horas`
+                  : `${service.duration_hours} horas`}
               </SmallBadge>
             )}
 
-            {service.grill_available && (
+            {service.duration_by_guests && (
+              <SmallBadge>
+                Duración variable
+              </SmallBadge>
+            )}
+
+            {(Number(service.buffer_before_minutes || 0) > 0 ||
+              Number(service.buffer_after_minutes || 0) > 0) && (
+                <SmallBadge>
+                  Margen: {formatBufferMinutes(Number(service.buffer_before_minutes || 0))} antes ·{' '}
+                  {formatBufferMinutes(Number(service.buffer_after_minutes || 0))} después
+                </SmallBadge>
+              )}
+
+            {service.category_slug === 'parrilleros' &&
+              service.grill_available && (
               <SmallBadge>
                 Parrilla{' '}
                 {formatCLP(
@@ -1600,7 +2049,8 @@ function ServiceCard({
               </SmallBadge>
             )}
 
-            {service.shopping_available && (
+            {service.category_slug === 'parrilleros' &&
+              service.shopping_available && (
               <SmallBadge>
                 Gestión compras
               </SmallBadge>
@@ -1627,7 +2077,49 @@ function ServiceCard({
               </div>
             )}
 
-          {service.full_package_enabled && (
+          {service.duration_by_guests &&
+            service.duration_hours &&
+            service.duration_guest_threshold &&
+            service.extra_duration_hours &&
+            service.extra_duration_guest_block && (
+              <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm">
+                <p className="font-semibold text-primary">
+                  Duración según invitados
+                </p>
+
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {service.duration_hours} h base hasta{' '}
+                  {service.duration_guest_threshold} personas.
+                  Luego agrega{' '}
+                  {service.extra_duration_hours} h por cada{' '}
+                  {service.extra_duration_guest_block} personas adicionales.
+                </p>
+
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Ejemplo 50 personas:{' '}
+                  <b className="text-foreground">
+                    {calculateServiceDuration(
+                      Number(service.duration_hours),
+                      50,
+                      true,
+                      Number(
+                        service.duration_guest_threshold
+                      ),
+                      Number(
+                        service.extra_duration_hours
+                      ),
+                      Number(
+                        service.extra_duration_guest_block
+                      )
+                    )}{' '}
+                    horas
+                  </b>
+                </p>
+              </div>
+            )}
+
+          {service.category_slug === 'parrilleros' &&
+            service.full_package_enabled && (
             <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3">
               <div className="flex items-center gap-2 text-sm font-semibold text-primary">
                 <BadgePercent className="size-4" />
@@ -1711,6 +2203,16 @@ function ServiceCard({
         </div>
 
         <div className="flex gap-2">
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            title="Editar"
+            onClick={onEdit}
+          >
+            <Pencil />
+          </Button>
+
           <Button
             type="button"
             size="icon"
@@ -1849,6 +2351,52 @@ function DollarIcon({
   )
 }
 
+function calculateServiceDuration(
+  baseHours: number,
+  guests: number,
+  durationByGuests: boolean,
+  threshold: number,
+  extraHours: number,
+  guestBlock: number
+) {
+  const safeBase =
+    Math.max(0.5, Number(baseHours || 0.5))
+
+  if (!durationByGuests) {
+    return safeBase
+  }
+
+  const safeGuests =
+    Math.max(0, Number(guests || 0))
+
+  const safeThreshold =
+    Math.max(1, Number(threshold || 1))
+
+  const safeExtraHours =
+    Math.max(0, Number(extraHours || 0))
+
+  const safeGuestBlock =
+    Math.max(1, Number(guestBlock || 1))
+
+  if (safeGuests <= safeThreshold) {
+    return safeBase
+  }
+
+  const extraGuests =
+    safeGuests - safeThreshold
+
+  const blocks =
+    Math.ceil(
+      extraGuests /
+      safeGuestBlock
+    )
+
+  return (
+    safeBase +
+    blocks * safeExtraHours
+  )
+}
+
 function linesToArray(
   value: string
 ) {
@@ -1859,4 +2407,17 @@ function linesToArray(
         line.trim()
     )
     .filter(Boolean)
+}
+
+function formatBufferMinutes(minutes: number) {
+  const value = Math.max(0, Number(minutes || 0))
+
+  if (value === 0) return 'Sin margen'
+  if (value < 60) return `${value} min`
+  if (value === 60) return '1 h'
+  if (value % 60 === 0) return `${value / 60} h`
+
+  const hours = Math.floor(value / 60)
+  const mins = value % 60
+  return `${hours} h ${mins} min`
 }

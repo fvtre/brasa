@@ -11,6 +11,7 @@ import { StarRating } from "@/components/star-rating"
 import { CategoryIcon } from "@/components/category-icon"
 import { Badge } from "@/components/ui/badge"
 import { ServiceSelector } from "@/components/service-selector"
+import type { CategorySlug } from "@/lib/types"
 
 export function generateStaticParams() {
   return PROVIDERS.map((p) => ({ id: p.id }))
@@ -18,22 +19,32 @@ export function generateStaticParams() {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ categoria?: string }>
 }): Promise<Metadata> {
   const { id } = await params
-  const provider = (await getDbProvider(id)) || getProvider(id)
+  const { categoria } = await searchParams
+  const provider =
+    (await getDbProvider(id, categoria as CategorySlug | undefined)) ||
+    getProvider(id)
   if (!provider) return { title: "Prestador no encontrado — Brasa" }
   return { title: `${provider.name} — Brasa`, description: provider.tagline }
 }
 
 export default async function ProviderPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ categoria?: string }>
 }) {
   const { id } = await params
-  const provider = (await getDbProvider(id)) || getProvider(id)
+  const { categoria } = await searchParams
+  const provider =
+    (await getDbProvider(id, categoria as CategorySlug | undefined)) ||
+    getProvider(id)
   if (!provider) notFound()
 
   const category = getCategory(provider.category)
