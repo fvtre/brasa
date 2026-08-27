@@ -229,6 +229,21 @@ function mapDbProvider(
             0
           ),
 
+        schedule_mode:
+          service.schedule_mode ||
+          'continuous',
+
+        inventory_capacity:
+          service.inventory_capacity != null
+            ? Number(service.inventory_capacity)
+            : null,
+
+        buffer_before_minutes:
+          Number(service.buffer_before_minutes || 0),
+
+        buffer_after_minutes:
+          Number(service.buffer_after_minutes || 0),
+
         // ==========================================
         // PARRILLA
         // ==========================================
@@ -341,7 +356,7 @@ function mapDbProvider(
 
   const image =
     selectedCategoryRow?.cover_image_url ||
-    (!requestedCategory ? row.image_url : null) ||
+    (category === legacyCategory ? row.image_url : null) ||
     fallbackImage
 
   // ============================================
@@ -357,7 +372,11 @@ function mapDbProvider(
       .filter(Boolean)
 
   const rawGallery = requestedCategory
-    ? categoryGallery
+    ? categoryGallery.length > 0
+      ? categoryGallery
+      : category === legacyCategory && Array.isArray(row.gallery)
+        ? row.gallery.filter(Boolean)
+        : []
     : categoryGallery.length > 0
       ? categoryGallery
       : Array.isArray(row.gallery)

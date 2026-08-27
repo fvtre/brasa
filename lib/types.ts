@@ -42,6 +42,10 @@ export interface ProviderService {
   // Duración
   duration_hours?: number | null
   extra_hour_price?: number | null
+  schedule_mode?: "continuous" | "delivery_pickup"
+  inventory_capacity?: number | null
+  buffer_before_minutes?: number
+  buffer_after_minutes?: number
 
   // Parrilla
   grill_available?: boolean

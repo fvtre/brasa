@@ -58,6 +58,9 @@ type ProviderService = {
   buffer_before_minutes: number
   buffer_after_minutes: number
 
+  schedule_mode: 'continuous' | 'delivery_pickup'
+  inventory_capacity: number | null
+
   grill_available: boolean
   grill_price: number
 
@@ -120,6 +123,9 @@ const INITIAL_FORM = {
 
   bufferBeforeMinutes: 0,
   bufferAfterMinutes: 0,
+
+  scheduleMode: 'continuous' as 'continuous' | 'delivery_pickup',
+  inventoryCapacity: 0,
 
   grillAvailable: false,
   grillPrice: 0,
@@ -504,6 +510,27 @@ export default function ProviderServicesPage() {
       }
 
       if (
+        f.scheduleMode === 'delivery_pickup' &&
+        Number(f.bufferBeforeMinutes) <= 0 &&
+        Number(f.bufferAfterMinutes) <= 0
+      ) {
+        throw new Error(
+          'Indica el tiempo de instalaciÃ³n, de retiro o ambos.'
+        )
+      }
+
+      if (
+        f.scheduleMode === 'delivery_pickup' &&
+        f.unit === 'por unidad' &&
+        (!Number.isFinite(Number(f.inventoryCapacity)) ||
+          Number(f.inventoryCapacity) <= 0)
+      ) {
+        throw new Error(
+          'Indica cuÃ¡ntas unidades tienes disponibles.'
+        )
+      }
+
+      if (
         f.fullPackageDiscountType ===
         'percentage' &&
         f.fullPackageDiscount >
@@ -596,6 +623,15 @@ export default function ProviderServicesPage() {
 
             buffer_after_minutes:
               Number(f.bufferAfterMinutes || 0),
+
+            schedule_mode:
+              f.scheduleMode,
+
+            inventory_capacity:
+              f.scheduleMode === 'delivery_pickup' &&
+                f.unit === 'por unidad'
+                ? Number(f.inventoryCapacity)
+                : null,
 
             grill_available:
               isGrillService
@@ -732,6 +768,8 @@ export default function ProviderServicesPage() {
       extraDurationGuestBlock: Number(service.extra_duration_guest_block || 20),
       bufferBeforeMinutes: Number(service.buffer_before_minutes || 0),
       bufferAfterMinutes: Number(service.buffer_after_minutes || 0),
+      scheduleMode: service.schedule_mode || 'continuous',
+      inventoryCapacity: Number(service.inventory_capacity || 0),
       grillAvailable: Boolean(service.grill_available),
       grillPrice: Number(service.grill_price || 0),
       transportAvailable: Boolean(service.transport_available),
@@ -972,6 +1010,18 @@ export default function ProviderServicesPage() {
                       setF({
                         ...f,
                         categorySlug: event.target.value,
+                        scheduleMode:
+                          event.target.value === 'mobiliario' && !editingId
+                            ? 'delivery_pickup'
+                            : f.scheduleMode,
+                        bufferBeforeMinutes:
+                          event.target.value === 'mobiliario' && !editingId
+                            ? 60
+                            : f.bufferBeforeMinutes,
+                        bufferAfterMinutes:
+                          event.target.value === 'mobiliario' && !editingId
+                            ? 60
+                            : f.bufferAfterMinutes,
                       })
                     }
                   >
@@ -1220,9 +1270,41 @@ export default function ProviderServicesPage() {
                 title="Duración"
                 description="Define cuánto dura el servicio y si el tiempo aumenta según la cantidad de invitados."
               >
+                <label className="grid gap-1.5 text-sm">
+                  Forma de prestar el servicio
+
+                  <select
+                    className="h-10 rounded-lg border bg-background px-3"
+                    value={f.scheduleMode}
+                    disabled={busy}
+                    onChange={(event) =>
+                      setF({
+                        ...f,
+                        scheduleMode: event.target.value as
+                          | 'continuous'
+                          | 'delivery_pickup',
+                      })
+                    }
+                  >
+                    <option value="continuous">
+                      Permanezco durante todo el evento
+                    </option>
+                    <option value="delivery_pickup">
+                      Entrega / instalación y retiro
+                    </option>
+                  </select>
+
+                  <span className="text-[11px] text-muted-foreground">
+                    En entrega y retiro, Brasa deja libre tu agenda mientras el
+                    cliente usa el producto.
+                  </span>
+                </label>
+
                 <div className="grid grid-cols-2 gap-3">
                   <label className="grid gap-1.5 text-sm">
-                    Duración base
+                    {f.scheduleMode === 'delivery_pickup'
+                      ? 'Duración del arriendo / evento'
+                      : 'Duración base'}
 
                     <Input
                       type="number"
@@ -1392,13 +1474,17 @@ export default function ProviderServicesPage() {
                   <div>
                     <p className="text-sm font-semibold">Tiempo operativo entre eventos</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Estos tiempos bloquean tu agenda para preparación y traslado, pero no se cobran al cliente ni aumentan la duración contratada.
+                      {f.scheduleMode === 'delivery_pickup'
+                        ? 'Brasa bloqueará dos momentos separados: la instalación antes del evento y el retiro cuando termine.'
+                        : 'Estos tiempos bloquean tu agenda para preparación y traslado, pero no se cobran al cliente ni aumentan la duración contratada.'}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <label className="grid gap-1.5 text-sm">
-                      Preparación / traslado antes
+                      {f.scheduleMode === 'delivery_pickup'
+                        ? 'Instalación / entrega antes'
+                        : 'Preparación / traslado antes'}
                       <select
                         className="h-10 rounded-lg border bg-background px-3"
                         value={f.bufferBeforeMinutes}
@@ -1419,7 +1505,9 @@ export default function ProviderServicesPage() {
                     </label>
 
                     <label className="grid gap-1.5 text-sm">
-                      Tiempo después del evento
+                      {f.scheduleMode === 'delivery_pickup'
+                        ? 'Retiro al terminar'
+                        : 'Tiempo después del evento'}
                       <select
                         className="h-10 rounded-lg border bg-background px-3"
                         value={f.bufferAfterMinutes}
@@ -1440,6 +1528,33 @@ export default function ProviderServicesPage() {
                     </label>
                   </div>
                 </div>
+
+                {f.scheduleMode === 'delivery_pickup' &&
+                  f.unit === 'por unidad' && (
+                    <label className="grid gap-1.5 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">
+                      Unidades disponibles en inventario
+
+                      <Input
+                        type="number"
+                        min={1}
+                        step={1}
+                        required
+                        disabled={busy}
+                        value={f.inventoryCapacity || ''}
+                        placeholder="Ej: 100 sillas"
+                        onChange={(event) =>
+                          setF({
+                            ...f,
+                            inventoryCapacity: Number(event.target.value),
+                          })
+                        }
+                      />
+
+                      <span className="text-[11px] text-muted-foreground">
+                        Brasa impedirá reservas simultáneas que superen este stock.
+                      </span>
+                    </label>
+                  )}
               </FormSection>
 
               {/* TRASLADO */}

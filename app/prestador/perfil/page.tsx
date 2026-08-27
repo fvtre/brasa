@@ -130,6 +130,9 @@ export default function ProviderProfilePage() {
   const [savingCategoryProfile, setSavingCategoryProfile] =
     React.useState(false)
 
+  const [coverageSearch, setCoverageSearch] =
+    React.useState('')
+
   const [form, setForm] =
     React.useState({
       businessName: '',
@@ -137,6 +140,7 @@ export default function ProviderProfilePage() {
       tagline: '',
       bio: '',
       comuna: '',
+      coverage: [] as string[],
       experienceYears: 0,
     })
 
@@ -291,6 +295,12 @@ export default function ProviderProfilePage() {
             current.bio || '',
           comuna:
             current.comuna || '',
+          coverage:
+            current.coverage?.length
+              ? current.coverage
+              : current.comuna
+                ? [current.comuna]
+                : [],
           experienceYears:
             current.experience_years || 0,
         })
@@ -338,6 +348,18 @@ export default function ProviderProfilePage() {
       if (!form.comuna) {
         throw new Error(
           'Selecciona una comuna.'
+        )
+      }
+
+      if (form.coverage.length === 0) {
+        throw new Error(
+          'Selecciona al menos una comuna de cobertura.'
+        )
+      }
+
+      if (!form.coverage.includes(form.comuna)) {
+        throw new Error(
+          'La comuna principal debe estar incluida en tu cobertura.'
         )
       }
 
@@ -408,9 +430,7 @@ export default function ProviderProfilePage() {
           comuna:
             form.comuna,
           coverage:
-            form.comuna
-              ? [form.comuna]
-              : [],
+            form.coverage,
           experience_years:
             Number(
               form.experienceYears
@@ -491,6 +511,17 @@ export default function ProviderProfilePage() {
         category: nextCategories[0] || '',
       })
     }
+  }
+
+  function toggleCoverage(comuna: string) {
+    clearMessages()
+
+    setForm((current) => ({
+      ...current,
+      coverage: current.coverage.includes(comuna)
+        ? current.coverage.filter((item) => item !== comuna)
+        : [...current.coverage, comuna],
+    }))
   }
 
   function selectCategoryProfile(categorySlug: string) {
@@ -1241,14 +1272,18 @@ export default function ProviderProfilePage() {
                       }
                       required
                       disabled={saving}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const comuna = e.target.value
+
                         setForm({
                           ...form,
-                          comuna:
-                            e.target
-                              .value,
+                          comuna,
+                          coverage:
+                            comuna && !form.coverage.includes(comuna)
+                              ? [...form.coverage, comuna]
+                              : form.coverage,
                         })
-                      }
+                      }}
                     >
                       <option value="">
                         Selecciona
@@ -1266,6 +1301,95 @@ export default function ProviderProfilePage() {
                       )}
                     </select>
                   </label>
+                </div>
+
+                <div className="space-y-3 rounded-xl border p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">
+                        Comunas de cobertura
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Selecciona las comunas de la Región Metropolitana donde puedes prestar servicios.
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={saving}
+                        onClick={() =>
+                          setForm({
+                            ...form,
+                            coverage: [...COMUNAS],
+                          })
+                        }
+                      >
+                        Seleccionar todas
+                      </Button>
+
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={saving || !form.comuna}
+                        onClick={() =>
+                          setForm({
+                            ...form,
+                            coverage: form.comuna ? [form.comuna] : [],
+                          })
+                        }
+                      >
+                        Solo principal
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Input
+                    type="search"
+                    value={coverageSearch}
+                    disabled={saving}
+                    placeholder="Buscar comuna"
+                    onChange={(event) => setCoverageSearch(event.target.value)}
+                  />
+
+                  <p className="text-xs font-medium text-primary">
+                    {form.coverage.length} comuna(s) seleccionada(s)
+                  </p>
+
+                  <div className="grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                    {COMUNAS.filter((comuna) =>
+                      comuna
+                        .toLocaleLowerCase('es-CL')
+                        .includes(coverageSearch.trim().toLocaleLowerCase('es-CL'))
+                    ).map((comuna) => {
+                      const checked = form.coverage.includes(comuna)
+                      const isPrimary = form.comuna === comuna
+
+                      return (
+                        <label
+                          key={comuna}
+                          className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            className="size-4 accent-primary"
+                            checked={checked}
+                            disabled={saving || isPrimary}
+                            onChange={() => toggleCoverage(comuna)}
+                          />
+                          <span className="flex-1">{comuna}</span>
+                          {isPrimary && (
+                            <span className="text-[10px] text-muted-foreground">
+                              Principal
+                            </span>
+                          )}
+                        </label>
+                      )
+                    })}
+                  </div>
                 </div>
 
                 <label className="grid gap-1.5 text-sm">

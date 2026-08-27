@@ -7,6 +7,7 @@ import {
   Plus,
   Star,
   CalendarCheck2,
+  MapPin,
 } from "lucide-react"
 
 import type { Provider } from "@/lib/types"
@@ -24,6 +25,7 @@ export function ServiceSelector({
     addSelection,
     removeSelection,
     has,
+    comuna,
   } = useEvent()
 
   /*
@@ -38,6 +40,23 @@ export function ServiceSelector({
 
   const hasAvailability =
     provider.availableDays.length > 0
+
+  const normalizedEventComuna =
+    comuna?.trim().toLocaleLowerCase("es-CL")
+
+  const coversEventComuna =
+    !normalizedEventComuna ||
+    provider.coverage.some(
+      coveredComuna =>
+        coveredComuna
+          .trim()
+          .toLocaleLowerCase("es-CL") ===
+        normalizedEventComuna
+    ) ||
+    provider.comuna
+      .trim()
+      .toLocaleLowerCase("es-CL") ===
+      normalizedEventComuna
 
   const getQuantity = (
     serviceId: string
@@ -77,6 +96,34 @@ export function ServiceSelector({
 
   return (
     <div className="space-y-3">
+      <div
+        className={cn(
+          "rounded-lg border px-3 py-3 text-sm",
+          coversEventComuna
+            ? "border-border bg-muted/40"
+            : "border-destructive/40 bg-destructive/5 text-destructive"
+        )}
+      >
+        <div className="flex items-start gap-2">
+          <MapPin className="mt-0.5 size-4 shrink-0" />
+          <div>
+            <p className="font-medium">
+              Comunas donde presta el servicio
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {provider.coverage.length > 0
+                ? provider.coverage.join(", ")
+                : provider.comuna}
+            </p>
+            {!coversEventComuna && comuna && (
+              <p className="mt-2 text-xs font-medium text-destructive">
+                Este prestador no tiene cobertura en {comuna}.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
       {hasAvailability && (
         <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-xs font-medium text-primary">
           <CalendarCheck2 className="size-4" />
@@ -318,6 +365,7 @@ export function ServiceSelector({
 
               <button
                 type="button"
+                disabled={!selected && !coversEventComuna}
                 onClick={() => {
                   if (selected) {
                     removeSelection(
@@ -438,7 +486,9 @@ export function ServiceSelector({
                   "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-all",
                   selected
                     ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                    : "border border-border bg-background text-foreground hover:border-primary hover:bg-primary/5"
+                    : coversEventComuna
+                      ? "border border-border bg-background text-foreground hover:border-primary hover:bg-primary/5"
+                      : "cursor-not-allowed border border-border bg-muted text-muted-foreground opacity-60"
                 )}
                 aria-pressed={selected}
               >
@@ -450,7 +500,9 @@ export function ServiceSelector({
 
                 {selected
                   ? "Agregado"
-                  : "Agregar"}
+                  : coversEventComuna
+                    ? "Agregar"
+                    : "Sin cobertura"}
               </button>
             </div>
           </div>

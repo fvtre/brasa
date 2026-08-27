@@ -19,7 +19,6 @@ import {
 import { useEvent } from '@/components/event-provider'
 import { useAuth } from '@/components/auth/auth-provider'
 import { formatCLP } from '@/lib/format'
-import { COMUNAS } from '@/lib/catalog'
 import { createClient } from '@/lib/supabase/client'
 
 import { Button } from '@/components/ui/button'
@@ -104,6 +103,21 @@ export default function CheckoutPage() {
     ] = React.useState(false)
 
     const [
+        coveredCommunes,
+        setCoveredCommunes,
+    ] = React.useState<string[]>([])
+
+    const [
+        loadingCoverage,
+        setLoadingCoverage,
+    ] = React.useState(false)
+
+    const [
+        coverageError,
+        setCoverageError,
+    ] = React.useState('')
+
+    const [
         form,
         setForm,
     ] = React.useState({
@@ -120,6 +134,119 @@ export default function CheckoutPage() {
         contactPhone: '',
         notes: '',
     })
+
+    /* =======================================================
+       COBERTURA COMUN DE LOS PRESTADORES SELECCIONADOS
+    ======================================================= */
+
+    React.useEffect(() => {
+        const providerSlugs = Array.from(
+            new Set(
+                selections.map(
+                    selection =>
+                        selection.providerId
+                )
+            )
+        )
+
+        if (providerSlugs.length === 0) {
+            setCoveredCommunes([])
+            setCoverageError('')
+            return
+        }
+
+        let cancelled = false
+
+        async function loadCoverage() {
+            setLoadingCoverage(true)
+            setCoverageError('')
+
+            const { data, error } =
+                await supabase
+                    .from('service_providers')
+                    .select('slug,comuna,coverage')
+                    .in('slug', providerSlugs)
+                    .eq('active', true)
+
+            if (cancelled) {
+                return
+            }
+
+            if (error) {
+                console.error(
+                    'Error cargando cobertura:',
+                    error
+                )
+                setCoveredCommunes([])
+                setCoverageError(
+                    'No se pudo consultar la cobertura de los prestadores.'
+                )
+                setLoadingCoverage(false)
+                return
+            }
+
+            const providersCoverage =
+                (data || []).map(row => {
+                    const coverage =
+                        Array.isArray(row.coverage) &&
+                        row.coverage.length > 0
+                            ? row.coverage
+                            : row.comuna
+                                ? [row.comuna]
+                                : []
+
+                    return new Map(
+                        coverage.map(item => [
+                            String(item)
+                                .trim()
+                                .toLocaleLowerCase('es-CL'),
+                            String(item).trim(),
+                        ])
+                    )
+                })
+
+            const common =
+                providersCoverage.length === 0
+                    ? []
+                    : Array.from(
+                        providersCoverage[0].entries()
+                    )
+                        .filter(([normalized]) =>
+                            providersCoverage.every(
+                                coverage =>
+                                    coverage.has(normalized)
+                            )
+                        )
+                        .map(([, label]) => label)
+                        .sort((a, b) =>
+                            a.localeCompare(b, 'es-CL')
+                        )
+
+            setCoveredCommunes(common)
+
+            if (
+                comuna &&
+                !common.some(
+                    item =>
+                        item.toLocaleLowerCase('es-CL') ===
+                        comuna.toLocaleLowerCase('es-CL')
+                )
+            ) {
+                setComuna(undefined)
+            }
+
+            setLoadingCoverage(false)
+        }
+
+        loadCoverage()
+
+        return () => {
+            cancelled = true
+        }
+    }, [
+        selections,
+        supabase,
+    ])
 
     /* =======================================================
        COMPLETAR DATOS DEL CLIENTE
@@ -262,7 +389,7 @@ export default function CheckoutPage() {
                         if (
                             current.time &&
                             !slots.some(
-                                slot =>
+                                (slot: string) =>
                                     formatSlot(
                                         slot
                                     ) ===
@@ -680,7 +807,9 @@ export default function CheckoutPage() {
                             <select
                                 required
                                 disabled={
-                                    creatingBooking
+                                    creatingBooking ||
+                                    loadingCoverage ||
+                                    coveredCommunes.length === 0
                                 }
                                 value={
                                     comuna || ''
@@ -694,10 +823,14 @@ export default function CheckoutPage() {
                                 className="h-10 w-full rounded-lg border border-border bg-background px-3"
                             >
                                 <option value="">
-                                    Selecciona
+                                    {loadingCoverage
+                                        ? 'Cargando cobertura…'
+                                        : coveredCommunes.length === 0
+                                            ? 'Sin comunas compatibles'
+                                            : 'Selecciona'}
                                 </option>
 
-                                {COMUNAS.map(
+                                {coveredCommunes.map(
                                     item => (
                                         <option
                                             key={item}
@@ -708,6 +841,27 @@ export default function CheckoutPage() {
                                     )
                                 )}
                             </select>
+
+                            {!loadingCoverage &&
+                                coveredCommunes.length > 0 && (
+                                    <span className="block text-xs text-muted-foreground">
+                                        Comunas atendidas por todos los prestadores seleccionados.
+                                    </span>
+                                )}
+
+                            {!loadingCoverage &&
+                                coveredCommunes.length === 0 &&
+                                selections.length > 0 && (
+                                    <span className="block text-xs text-destructive">
+                                        Los prestadores seleccionados no comparten una comuna de cobertura.
+                                    </span>
+                                )}
+
+                            {coverageError && (
+                                <span className="block text-xs text-destructive">
+                                    {coverageError}
+                                </span>
+                            )}
                         </label>
                     </div>
 

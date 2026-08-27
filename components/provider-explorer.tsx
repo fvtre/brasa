@@ -20,7 +20,6 @@ import type {
 
 import {
   CATEGORIES,
-  COMUNAS,
 } from "@/lib/catalog"
 
 import { Input } from "@/components/ui/input"
@@ -113,6 +112,44 @@ export function ProviderExplorer({
     setComuna,
   ] =
     React.useState("all")
+
+  const availableCommunes =
+    React.useMemo(() => {
+      const communes = new Set<string>()
+
+      providers
+        .filter(
+          provider =>
+            category === "all" ||
+            provider.categories.includes(category)
+        )
+        .forEach(provider => {
+        const coverage =
+          provider.coverage.length > 0
+            ? provider.coverage
+            : [provider.comuna]
+
+        coverage.forEach(item => {
+          if (item.trim()) {
+            communes.add(item.trim())
+          }
+        })
+        })
+
+      return Array.from(communes).sort(
+        (a, b) =>
+          a.localeCompare(b, "es-CL")
+      )
+    }, [providers, category])
+
+  React.useEffect(() => {
+    if (
+      comuna !== "all" &&
+      !availableCommunes.includes(comuna)
+    ) {
+      setComuna("all")
+    }
+  }, [availableCommunes, comuna])
 
   const [
     verifiedOnly,
@@ -1233,7 +1270,7 @@ export function ProviderExplorer({
               Todas las comunas
             </option>
 
-            {COMUNAS.map(
+            {availableCommunes.map(
               item => (
                 <option
                   key={
