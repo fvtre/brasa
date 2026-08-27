@@ -27,6 +27,61 @@ import { ProviderBookingActions } from '@/components/provider-booking-actions'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+function getProviderStatusPresentation(
+    status: string
+) {
+    const normalized =
+        String(status || '').toLowerCase()
+
+    if (
+        [
+            'confirmada',
+            'en_preparacion',
+            'en_curso',
+            'completada',
+        ].includes(normalized)
+    ) {
+        return {
+            label: normalized === 'confirmada'
+                ? 'Confirmada'
+                : normalized.replaceAll('_', ' '),
+            className:
+                'border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400',
+        }
+    }
+
+    if (
+        ['cancelada', 'rechazada'].includes(
+            normalized
+        )
+    ) {
+        return {
+            label:
+                normalized === 'rechazada'
+                    ? 'Rechazada'
+                    : 'Cancelada',
+            className:
+                'border-red-500/30 bg-red-500/15 text-red-700 dark:text-red-400',
+        }
+    }
+
+    if (normalized === 'expirada') {
+        return {
+            label: 'Expirada',
+            className:
+                'border-orange-500/30 bg-orange-500/15 text-orange-700 dark:text-orange-400',
+        }
+    }
+
+    return {
+        label:
+            normalized.replaceAll('_', ' ') ||
+            'Pendiente',
+        className:
+            'border-border bg-muted text-muted-foreground',
+    }
+}
+
 export default async function ProviderDashboard() {
     const { profile } = await requireRole([
         'prestador',
@@ -347,6 +402,11 @@ export default async function ProviderDashboard() {
                                     const booking =
                                         item.booking
 
+                                    const statusPresentation =
+                                        getProviderStatusPresentation(
+                                            item.provider_status
+                                        )
+
                                     return (
                                         <div
                                             key={item.id}
@@ -360,14 +420,10 @@ export default async function ProviderDashboard() {
                                                                 'Evento'}
                                                         </b>
 
-                                                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] capitalize text-muted-foreground">
-                                                            {String(
-                                                                item.provider_status ||
-                                                                ''
-                                                            ).replaceAll(
-                                                                '_',
-                                                                ' '
-                                                            )}
+                                                        <span
+                                                            className={`rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${statusPresentation.className}`}
+                                                        >
+                                                            {statusPresentation.label}
                                                         </span>
                                                     </div>
 
@@ -390,6 +446,12 @@ export default async function ProviderDashboard() {
                                                         personas
                                                     </p>
 
+                                                    <details className="mt-3 rounded-lg border border-border/70 bg-muted/20">
+                                                        <summary className="cursor-pointer px-3 py-2 text-sm font-medium transition-colors hover:text-primary">
+                                                            Ver detalle
+                                                        </summary>
+
+                                                        <div className="border-t border-border/70 px-3 pb-3">
                                                     <p className="mt-3 font-medium">
                                                         {
                                                             item.service_name
@@ -461,6 +523,8 @@ export default async function ProviderDashboard() {
                                                             }
                                                         />
                                                     </div>
+                                                        </div>
+                                                    </details>
                                                 </div>
 
                                                 <div className="text-right">

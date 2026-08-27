@@ -147,19 +147,6 @@ export default async function ProviderPage({
             <p className="mt-2 text-muted-foreground text-pretty leading-relaxed">{provider.bio}</p>
           </section>
 
-          {/* Coverage */}
-          <section className="mt-8">
-            <h2 className="text-xl font-bold">Comunas de cobertura</h2>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {provider.coverage.map((c) => (
-                <Badge key={c} variant="outline">
-                  <MapPin size={12} />
-                  {c}
-                </Badge>
-              ))}
-            </div>
-          </section>
-
           {/* Reviews */}
           <section className="mt-8">
             <h2 className="text-xl font-bold">Evaluaciones</h2>

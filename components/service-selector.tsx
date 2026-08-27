@@ -41,12 +41,17 @@ export function ServiceSelector({
   const hasAvailability =
     provider.availableDays.length > 0
 
+  const effectiveCoverage =
+    provider.coverage.length > 0
+      ? provider.coverage
+      : [provider.comuna].filter(Boolean)
+
   const normalizedEventComuna =
     comuna?.trim().toLocaleLowerCase("es-CL")
 
   const coversEventComuna =
     !normalizedEventComuna ||
-    provider.coverage.some(
+    effectiveCoverage.some(
       coveredComuna =>
         coveredComuna
           .trim()
@@ -106,20 +111,33 @@ export function ServiceSelector({
       >
         <div className="flex items-start gap-2">
           <MapPin className="mt-0.5 size-4 shrink-0" />
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="font-medium">
-              Comunas donde presta el servicio
+              Cobertura del servicio
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {provider.coverage.length > 0
-                ? provider.coverage.join(", ")
-                : provider.comuna}
+            <p className="mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              Proviene de {provider.comuna}
             </p>
             {!coversEventComuna && comuna && (
               <p className="mt-2 text-xs font-medium text-destructive">
                 Este prestador no tiene cobertura en {comuna}.
               </p>
             )}
+            <details className="mt-2 text-xs text-muted-foreground">
+              <summary className="w-fit cursor-pointer font-medium text-foreground hover:text-primary">
+                Servicio disponible en {effectiveCoverage.length}{" "}
+                {effectiveCoverage.length === 1
+                  ? "comuna"
+                  : "comunas"}
+              </summary>
+              <div className="mt-2 grid max-h-32 grid-cols-2 gap-x-3 gap-y-1 overflow-y-auto rounded-md border border-border/70 bg-background/60 p-2">
+                {effectiveCoverage.map(coveredComuna => (
+                  <span key={coveredComuna}>
+                    {coveredComuna}
+                  </span>
+                ))}
+              </div>
+            </details>
           </div>
         </div>
       </div>
