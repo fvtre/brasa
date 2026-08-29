@@ -193,7 +193,7 @@ export default async function HomePage() {
       <section className="relative overflow-hidden border-b border-border">
         <div className="absolute inset-0">
           <Image
-            src="/images/hero-event.png"
+            src="/images/hero-event-v2.png"
             alt=""
             fill
             priority
@@ -201,10 +201,10 @@ export default async function HomePage() {
             className="object-cover"
           />
 
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/95 to-background/60" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-background/20" />
         </div>
 
-        <div className="relative mx-auto flex max-w-6xl flex-col gap-6 px-4 py-20 md:py-28">
+        <div className="relative mx-auto flex max-w-6xl flex-col gap-5 px-4 pb-20 pt-9 md:pb-28 md:pt-8">
           <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
             El marketplace de eventos hecho en Chile
           </span>

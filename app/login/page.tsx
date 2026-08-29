@@ -8,8 +8,9 @@ import { Flame, LoaderCircle, LogIn } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { OAuthButtons } from '@/components/auth/oauth-buttons'
 
-export default function LoginPage() {
+function LoginPageContent() {
   const params = useSearchParams()
   const supabase = React.useMemo(() => createClient(), [])
   const [email, setEmail] = React.useState('')
@@ -115,6 +116,10 @@ export default function LoginPage() {
             </button>
           </form>
 
+          <div className="mt-5">
+            <OAuthButtons next={params.get('next') || '/cuenta'} />
+          </div>
+
           <p className="mt-5 text-center text-sm text-muted-foreground">
             ¿No tienes cuenta?{' '}
             <Link className="font-semibold text-primary" href="/registro">
@@ -124,5 +129,13 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <LoginPageContent />
+    </React.Suspense>
   )
 }

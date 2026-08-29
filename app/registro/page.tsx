@@ -7,6 +7,7 @@ import { BriefcaseBusiness, Flame, LoaderCircle, PartyPopper } from 'lucide-reac
 import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { OAuthButtons } from '@/components/auth/oauth-buttons'
 
 type Role = 'cliente' | 'prestador'
 
@@ -175,6 +176,10 @@ export default function RegisterPage() {
                   : 'Crear cuenta de cliente'}
             </button>
           </form>
+
+          <div className="mt-5">
+            <OAuthButtons role={role} mode="register" />
+          </div>
 
           <p className="mt-5 text-center text-sm text-muted-foreground">
             ¿Ya tienes cuenta?{' '}
