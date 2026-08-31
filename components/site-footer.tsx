@@ -37,9 +37,10 @@ export function SiteFooter() {
         </div>
         <div>
           <h3 className="mb-3 text-sm font-semibold">Brasa</h3>
-          <p className="text-sm text-muted-foreground">
-            Hecho en Chile para eventos inolvidables.
-          </p>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li><Link href="/privacidad" className="hover:text-foreground">Política de privacidad</Link></li>
+            <li><Link href="/eliminacion-de-datos" className="hover:text-foreground">Eliminación de datos</Link></li>
+          </ul>
         </div>
       </div>
       <div className="border-t border-border py-6 text-center text-xs text-muted-foreground">

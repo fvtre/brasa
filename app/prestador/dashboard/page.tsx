@@ -446,12 +446,7 @@ export default async function ProviderDashboard() {
                                                         personas
                                                     </p>
 
-                                                    <details className="mt-3 rounded-lg border border-border/70 bg-muted/20">
-                                                        <summary className="cursor-pointer px-3 py-2 text-sm font-medium transition-colors hover:text-primary">
-                                                            Ver detalle
-                                                        </summary>
-
-                                                        <div className="border-t border-border/70 px-3 pb-3">
+                                                    <div className="mt-3 rounded-lg border border-border/70 bg-muted/20 px-3 pb-3">
                                                     <p className="mt-3 font-medium">
                                                         {
                                                             item.service_name
@@ -468,6 +463,15 @@ export default async function ProviderDashboard() {
                                                     </p>
 
                                                     <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                                                        {booking?.contact_name && (
+                                                            <span className="flex items-center gap-1">
+                                                                <Users className="size-3.5" />
+                                                                {
+                                                                    booking.contact_name
+                                                                }
+                                                            </span>
+                                                        )}
+
                                                         {booking?.comuna && (
                                                             <span className="flex items-center gap-1">
                                                                 <MapPin className="size-3.5" />
@@ -523,8 +527,7 @@ export default async function ProviderDashboard() {
                                                             }
                                                         />
                                                     </div>
-                                                        </div>
-                                                    </details>
+                                                    </div>
                                                 </div>
 
                                                 <div className="text-right">
