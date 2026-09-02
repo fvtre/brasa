@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 
 import { PlanView } from "@/components/plan-view"
-import { requireRole } from "@/lib/auth"
 
 export const metadata: Metadata = {
   title: "Planificar evento — Brasa",
@@ -10,12 +9,7 @@ export const metadata: Metadata = {
     "Describe tu evento y arma un plan con proveedores según tu presupuesto.",
 }
 
-export default async function PlanificarPage() {
-  await requireRole([
-    "cliente",
-    "administrador",
-  ])
-
+export default function PlanificarPage() {
   return (
     <Suspense
       fallback={

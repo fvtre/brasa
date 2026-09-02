@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "scrape:catalog": "node --env-file=.env.local scripts/scrape-catalog.mjs data/catalog-sources.json",
+    "scrape:catalog:commit": "node --env-file=.env.local scripts/scrape-catalog.mjs data/catalog-sources.json --commit",
+    "seed:demo-providers": "node --env-file=.env.local scripts/seed-demo-providers.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

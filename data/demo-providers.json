@@ -1,0 +1,12 @@
+[
+  { "slug": "demo-fuego-central", "name": "Fuego Central · Demo", "category": "parrilleros", "service": "Parrillero para eventos", "price": 85000, "unit": "por evento" },
+  { "slug": "demo-bar-nomade", "name": "Bar Nómade · Demo", "category": "bartenders", "service": "Barra y bartender", "price": 75000, "unit": "por evento" },
+  { "slug": "demo-servicio-mesa", "name": "Servicio de Mesa · Demo", "category": "garzones", "service": "Garzón profesional", "price": 45000, "unit": "por evento" },
+  { "slug": "demo-mesa-sabores", "name": "Mesa de Sabores · Demo", "category": "catering", "service": "Cóctel para eventos", "price": 12500, "unit": "por persona" },
+  { "slug": "demo-dulce-momento", "name": "Dulce Momento · Demo", "category": "pasteleria", "service": "Torta personalizada", "price": 55000, "unit": "por unidad" },
+  { "slug": "demo-ritmo-eventos", "name": "Ritmo Eventos · Demo", "category": "dj", "service": "DJ e iluminación", "price": 160000, "unit": "por evento" },
+  { "slug": "demo-ambienta-studio", "name": "Ambienta Studio · Demo", "category": "decoracion", "service": "Decoración temática", "price": 95000, "unit": "por evento" },
+  { "slug": "demo-luz-y-recuerdo", "name": "Luz y Recuerdo · Demo", "category": "fotografia", "service": "Cobertura fotográfica", "price": 140000, "unit": "por evento" },
+  { "slug": "demo-monta-eventos", "name": "Monta Eventos · Demo", "category": "mobiliario", "service": "Pack de mesas y sillas", "price": 65000, "unit": "por pack" },
+  { "slug": "demo-brasa-verde", "name": "Brasa Verde · Demo", "category": "parrilleros-veganos", "service": "Parrilla vegana completa", "price": 14500, "unit": "por persona" }
+]

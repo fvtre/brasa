@@ -9,6 +9,8 @@ import { getDbProviders } from "@/lib/provider-db"
 import { CategoryIcon } from "@/components/category-icon"
 import { ProviderCard } from "@/components/provider-card"
 
+export const dynamic = "force-dynamic"
+
 export function generateStaticParams() {
   return CATEGORIES.map((c) => ({ slug: c.slug }))
 }

@@ -1,0 +1,38 @@
+{
+  "sources": [
+    {
+      "provider": "Jumbo",
+      "product": "Punta picana",
+      "category": "Carnes",
+      "unit": "kg",
+      "pricePerKg": true,
+      "deliveryCost": 0,
+      "url": "https://www.jumbo.cl/punta-de-picana-cat-v-frigosorno-granel/p",
+      "pricePatterns": ["\\$([\\d.]+)\\s*x\\s*kg"]
+    },
+    {
+      "provider": "Lider",
+      "product": "PF Longaniza parrillera 1 kg",
+      "category": "Carnes",
+      "unit": "kg",
+      "pricePerKg": true,
+      "deliveryCost": 0,
+      "url": "https://super.lider.cl/ip/todas-las-carnes/00780193000659",
+      "minPrice": 3000,
+      "maxPrice": 10000,
+      "pricePatterns": ["El precio actual es CLP\\$([\\d.]+)", "\\$([\\d.]+)\\s*x\\s*kg"]
+    },
+    {
+      "provider": "Jumbo",
+      "product": "PF Longaniza parrillera 1 kg",
+      "category": "Carnes",
+      "unit": "kg",
+      "pricePerKg": true,
+      "deliveryCost": 0,
+      "url": "https://www.jumbo.cl/longaniza-parrillera-pf-1-kg-987930/p",
+      "minPrice": 3000,
+      "maxPrice": 10000,
+      "pricePatterns": ["product:price:amount[^>]+content=[\"']?([\\d.]+)", "\\$([\\d.]+)\\s*x\\s*kg"]
+    }
+  ]
+}

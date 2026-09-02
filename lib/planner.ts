@@ -35,7 +35,7 @@ const NEED_RULES: NeedRule[] = [
   { category: "decoracion", keywords: ["decoracion", "decoración", "globos", "ambientacion", "ambientación", "adorno"] },
   { category: "fotografia", keywords: ["foto", "fotografia", "fotografía", "video", "recuerdo"] },
   { category: "mobiliario", keywords: ["mesa", "silla", "toldo", "mobiliario", "equipamiento", "vajilla"] },
-  { category: "parrilleros-veganos", keywords: ["asado", "parrilla", "parrillero", "carne", "churrasco", "anticucho"] },
+  { category: "parrilleros-veganos", keywords: ["parrilla vegana", "parrillero vegano", "asado vegano", "vegan", "vegano", "vegana"] },
 ]
 
 function parseGuests(text: string): number {
@@ -73,6 +73,7 @@ function detectCategories(text: string): CategorySlug[] {
   for (const rule of NEED_RULES) {
     if (rule.keywords.some((k) => lower.includes(k))) found.add(rule.category)
   }
+  if (found.has("parrilleros-veganos")) found.delete("parrilleros")
   // Sensible defaults for a generic celebration
   if (found.size === 0) {
     found.add("catering")
