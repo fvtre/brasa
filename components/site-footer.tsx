@@ -3,7 +3,7 @@ import { Flame } from "lucide-react"
 
 export function SiteFooter() {
   return (
-    <footer className="mt-24 border-t border-border bg-muted/40">
+    <footer className="mt-24 hidden border-t border-border bg-muted/40 md:block">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:grid-cols-2 md:grid-cols-4">
         <div className="space-y-3">
           <Link href="/" className="flex items-center gap-2">

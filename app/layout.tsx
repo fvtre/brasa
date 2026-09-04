@@ -6,6 +6,7 @@ import { EventProvider } from "@/components/event-provider"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { AuthProvider } from "@/components/auth/auth-provider"
+import { MobileTabBar } from "@/components/mobile-tab-bar"
 import "./globals.css"
 
 const jakarta = Plus_Jakarta_Sans({
@@ -24,6 +25,16 @@ export const metadata: Metadata = {
   title: "Brasa — Arma tu evento en Chile",
   description:
     "El marketplace chileno para tu evento completo: parrilleros, bartenders, garzones, catering, DJ y más. Cuéntanos tu presupuesto y armamos tu evento.",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/brasa-meta-icon-1024.png", sizes: "1024x1024", type: "image/png" }],
+  },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Brasa",
+  },
   generator: "v0.app",
 }
 
@@ -45,11 +56,12 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <AuthProvider>
             <EventProvider>
-            <div className="flex min-h-dvh flex-col">
+            <div className="flex min-h-dvh flex-col pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-0">
               <SiteHeader />
               <main className="flex-1">{children}</main>
               <SiteFooter />
             </div>
+            <MobileTabBar />
           </EventProvider>
           </AuthProvider>
         </ThemeProvider>

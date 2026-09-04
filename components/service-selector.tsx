@@ -74,13 +74,22 @@ export function ServiceSelector({
 
   const setServiceQuantity = (
     serviceId: string,
-    quantity: number
+    quantity: number,
+    maximum?: number | null
   ) => {
+    const normalizedMaximum =
+      maximum != null && maximum > 0
+        ? Math.floor(maximum)
+        : Number.MAX_SAFE_INTEGER
+
     setQuantities((current) => ({
       ...current,
-      [serviceId]: Math.max(
+      [serviceId]: Math.min(
+        normalizedMaximum,
+        Math.max(
         1,
         Math.floor(quantity)
+        )
       ),
     }))
   }
@@ -170,6 +179,11 @@ export function ServiceSelector({
 
         const quantity =
           getQuantity(service.id)
+
+        const inventoryCapacity =
+          service.inventory_capacity != null
+            ? Math.max(1, Math.floor(service.inventory_capacity))
+            : null
 
         const estimatedSubtotal =
           Math.round(
@@ -262,7 +276,8 @@ export function ServiceSelector({
                           onClick={() =>
                             setServiceQuantity(
                               service.id,
-                              quantity - 1
+                              quantity - 1,
+                              inventoryCapacity
                             )
                           }
                           disabled={
@@ -279,6 +294,7 @@ export function ServiceSelector({
                           type="number"
                           min={1}
                           step={1}
+                          max={inventoryCapacity || undefined}
                           value={quantity}
                           disabled={selected}
                           onChange={(event) =>
@@ -286,7 +302,8 @@ export function ServiceSelector({
                               service.id,
                               Number(
                                 event.target.value
-                              ) || 1
+                              ) || 1,
+                              inventoryCapacity
                             )
                           }
                           className="h-9 w-16 border-x border-border bg-transparent text-center text-sm font-semibold outline-none disabled:opacity-60"
@@ -298,10 +315,15 @@ export function ServiceSelector({
                           onClick={() =>
                             setServiceQuantity(
                               service.id,
-                              quantity + 1
+                              quantity + 1,
+                              inventoryCapacity
                             )
                           }
-                          disabled={selected}
+                          disabled={
+                            selected ||
+                            (inventoryCapacity != null &&
+                              quantity >= inventoryCapacity)
+                          }
                           className="flex h-9 w-9 items-center justify-center rounded-r-lg transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
                           aria-label="Aumentar cantidad"
                         >
@@ -327,6 +349,12 @@ export function ServiceSelector({
                         )}
                       </span>
                     </div>
+
+                    {inventoryCapacity != null && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Stock total publicado: {inventoryCapacity} unidades. La disponibilidad exacta se valida para la fecha y hora del evento.
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -428,6 +456,12 @@ export function ServiceSelector({
                       isPerUnit
                         ? quantity
                         : undefined,
+
+                    scheduleMode:
+                      service.schedule_mode || "continuous",
+
+                    inventoryCapacity:
+                      service.inventory_capacity ?? null,
 
                     // PRECIO ORIGINAL
                     baseUnitPrice:

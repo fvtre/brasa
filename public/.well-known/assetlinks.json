@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "cl.brasa.eventos",
+      "sha256_cert_fingerprints": [
+        "F2:21:2F:99:E9:60:40:DA:7C:9E:8E:9A:15:A5:FB:65:80:A4:EC:A0:FE:0B:EC:ED:7C:CB:18:0C:FC:53:5D:D4"
+      ]
+    }
+  }
+]

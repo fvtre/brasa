@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { formatCLP } from '@/lib/format'
 import { ProviderBookingActions } from '@/components/provider-booking-actions'
+import { PushNotificationSettings } from '@/components/push-notification-settings'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -325,6 +326,8 @@ export default async function ProviderDashboard() {
                     Nuevo servicio
                 </Button>
             </div>
+
+            <PushNotificationSettings />
 
             <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-5">
                 <Kpi

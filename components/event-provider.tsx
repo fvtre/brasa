@@ -25,6 +25,8 @@ export interface EventSelection {
   unit: string
 
   quantity?: number
+  scheduleMode?: "continuous" | "delivery_pickup"
+  inventoryCapacity?: number | null
 
   /*
    * Datos originales del servicio.
@@ -1100,6 +1102,21 @@ export function EventProvider({
             throw new Error(
               "Supabase no devolvió la reserva creada."
             )
+          }
+
+          try {
+            await fetch('/api/push/booking-created', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                bookingId: booking.id,
+              }),
+            })
+          } catch (pushError) {
+            // La reserva ya fue creada: un fallo del canal push no debe anularla.
+            console.error('No se pudo despachar el aviso push:', pushError)
           }
 
           /* ===============================================

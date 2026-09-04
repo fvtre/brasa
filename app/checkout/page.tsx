@@ -77,6 +77,7 @@ export default function CheckoutPage() {
         budget,
         comuna,
         setComuna,
+        updateSelection,
         createBooking,
         creatingBooking,
         selectionTotal,
@@ -101,6 +102,15 @@ export default function CheckoutPage() {
         loadingSlots,
         setLoadingSlots,
     ] = React.useState(false)
+
+    const [inventoryAvailability, setInventoryAvailability] =
+        React.useState<Record<string, number>>({})
+
+    const [loadingInventory, setLoadingInventory] =
+        React.useState(false)
+
+    const [inventoryError, setInventoryError] =
+        React.useState('')
 
     const [
         coveredCommunes,
@@ -293,10 +303,81 @@ export default function CheckoutPage() {
 
                         serviceKey:
                             selection.serviceId,
+
+                        guests,
                     })
                 ),
-            [selections]
+            [guests, selections]
         )
+
+    React.useEffect(() => {
+        let cancelled = false
+
+        const inventorySelections = selections.filter(
+            selection =>
+                String(selection.unit).trim().toLowerCase() === 'por unidad'
+        )
+
+        if (!form.date || !form.time || inventorySelections.length === 0) {
+            setInventoryAvailability({})
+            setInventoryError('')
+            setLoadingInventory(false)
+            return
+        }
+
+        setLoadingInventory(true)
+        setInventoryError('')
+
+        Promise.all(
+            inventorySelections.map(async selection => {
+                const { data, error: rpcError } = await supabase.rpc(
+                    'get_available_service_inventory',
+                    {
+                        p_service_id: selection.serviceId,
+                        p_event_date: form.date,
+                        p_event_time: form.time,
+                        p_guests: guests,
+                    }
+                )
+
+                if (rpcError) throw rpcError
+
+                if (data == null) return null
+
+                return [
+                    `${selection.providerId}:${selection.serviceId}`,
+                    Math.max(0, Math.floor(Number(data))),
+                ] as const
+            })
+        )
+            .then(entries => {
+                if (!cancelled) {
+                    setInventoryAvailability(
+                        Object.fromEntries(
+                            entries.flatMap(entry =>
+                                entry == null ? [] : [entry]
+                            )
+                        )
+                    )
+                }
+            })
+            .catch(err => {
+                console.error('Error consultando inventario:', err)
+                if (!cancelled) {
+                    setInventoryAvailability({})
+                    setInventoryError(
+                        'No se pudo validar el stock disponible. Intenta nuevamente.'
+                    )
+                }
+            })
+            .finally(() => {
+                if (!cancelled) setLoadingInventory(false)
+            })
+
+        return () => {
+            cancelled = true
+        }
+    }, [form.date, form.time, guests, selections, supabase])
 
     /* =======================================================
      BUSCAR HORARIOS REALES
@@ -734,6 +815,16 @@ export default function CheckoutPage() {
         !!form.date &&
         !!form.time &&
         !loadingSlots &&
+        !loadingInventory &&
+        !inventoryError &&
+        !selections.some(selection => {
+            const available = inventoryAvailability[
+                `${selection.providerId}:${selection.serviceId}`
+            ]
+
+            return available != null &&
+                Number(selection.quantity || 1) > available
+        }) &&
         !creatingBooking &&
         availableSlots.length > 0
 
@@ -1274,6 +1365,26 @@ export default function CheckoutPage() {
                                                 selection
                                             )
 
+                                        const inventoryKey =
+                                            `${selection.providerId}:${selection.serviceId}`
+                                        const availableInventory =
+                                            inventoryAvailability[inventoryKey]
+                                        const isPerUnit =
+                                            String(selection.unit).trim().toLowerCase() === 'por unidad'
+                                        const hasInventoryControl =
+                                            isPerUnit &&
+                                            (selection.scheduleMode === 'delivery_pickup' ||
+                                                availableInventory != null) &&
+                                            (selection.inventoryCapacity != null ||
+                                                availableInventory != null)
+                                        const selectedQuantity = Math.max(
+                                            1,
+                                            Math.floor(Number(selection.quantity || 1))
+                                        )
+                                        const insufficientInventory =
+                                            availableInventory != null &&
+                                            selectedQuantity > availableInventory
+
                                         return (
                                             <div
                                                 key={`${selection.providerId}-${selection.serviceId}`}
@@ -1300,6 +1411,57 @@ export default function CheckoutPage() {
                                                         )}
                                                     </span>
                                                 </div>
+
+                                                {isPerUnit && (
+                                                    <div className="mt-2 rounded-lg border bg-background/70 p-2">
+                                                        <div className="flex items-center justify-between gap-3 text-xs">
+                                                            <label htmlFor={`checkout-quantity-${selection.serviceId}`}>
+                                                                Cantidad
+                                                            </label>
+                                                            <input
+                                                                id={`checkout-quantity-${selection.serviceId}`}
+                                                                type="number"
+                                                                min={1}
+                                                                max={availableInventory ?? selection.inventoryCapacity ?? undefined}
+                                                                step={1}
+                                                                value={selectedQuantity}
+                                                                disabled={creatingBooking || loadingInventory}
+                                                                onChange={event => {
+                                                                    const requested = Math.max(
+                                                                        1,
+                                                                        Math.floor(Number(event.target.value) || 1)
+                                                                    )
+                                                                    const maximum =
+                                                                        availableInventory ??
+                                                                        selection.inventoryCapacity ??
+                                                                        requested
+
+                                                                    updateSelection(
+                                                                        selection.serviceId,
+                                                                        selection.providerId,
+                                                                        { quantity: Math.min(requested, maximum) }
+                                                                    )
+                                                                }}
+                                                                className="h-8 w-20 rounded-md border bg-background px-2 text-right font-semibold outline-none focus:border-primary"
+                                                            />
+                                                        </div>
+
+                                                        {hasInventoryControl && form.time && (
+                                                            <p className={cn(
+                                                                'mt-1 text-[11px]',
+                                                                insufficientInventory
+                                                                    ? 'font-medium text-destructive'
+                                                                    : 'text-muted-foreground'
+                                                            )}>
+                                                                {loadingInventory
+                                                                    ? 'Validando stock...'
+                                                                    : availableInventory != null
+                                                                        ? `Máximo disponible para este horario: ${availableInventory}`
+                                                                        : 'Stock pendiente de validación.'}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                )}
 
                                                 {/* EXTRAS ELEGIDOS */}
 
@@ -1412,6 +1574,12 @@ export default function CheckoutPage() {
                             El horario se valida nuevamente
                             al confirmar la solicitud.
                         </div>
+
+                        {inventoryError && (
+                            <div className="mt-3 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
+                                {inventoryError}
+                            </div>
+                        )}
 
                         {/* CONFIRMAR */}
 

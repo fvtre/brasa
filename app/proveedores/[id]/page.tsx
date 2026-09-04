@@ -3,7 +3,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { notFound } from "next/navigation"
 import { BadgeCheck, MapPin, ChevronRight, Briefcase, CalendarCheck, Sparkles } from "lucide-react"
-import { PROVIDERS, getProvider } from "@/lib/providers"
+import { getProvider } from "@/lib/providers"
 import { getDbProvider } from "@/lib/provider-db"
 import { getCategory } from "@/lib/catalog"
 import { formatNumber } from "@/lib/format"
@@ -13,9 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { ServiceSelector } from "@/components/service-selector"
 import type { CategorySlug } from "@/lib/types"
 
-export function generateStaticParams() {
-  return PROVIDERS.map((p) => ({ id: p.id }))
-}
+export const dynamic = "force-dynamic"
 
 export async function generateMetadata({
   params,
