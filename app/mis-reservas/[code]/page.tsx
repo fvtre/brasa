@@ -15,6 +15,7 @@ import { formatCLP } from '@/lib/format'
 import { createClient } from '@/lib/supabase/server'
 import { getCategory } from '@/lib/catalog'
 import { bookingStatusClasses, bookingStatusLabel } from '@/lib/booking-status'
+import { WebpayPaymentButton } from '@/components/webpay-payment-button'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -31,11 +32,14 @@ function formatDate(value: string) {
 
 export default async function BookingDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ code: string }>
+  searchParams: Promise<{ payment?: string }>
 }) {
   await requireRole(['cliente', 'administrador'])
   const { code } = await params
+  const { payment: paymentResult } = await searchParams
   const supabase = await createClient()
 
   const { data: booking, error } = await supabase
@@ -43,8 +47,9 @@ export default async function BookingDetailPage({
     .select(`
       id, code, event_name, event_date, event_time, status,
       comuna, address, guests, budget, subtotal, platform_fee,
-      total, contact_name, contact_email, contact_phone, notes,
+      total, contact_name, contact_email, contact_phone, notes, payment_due_at,
       created_at,
+      payments(id, status, expires_at),
       items:booking_items(
         id, provider_slug, provider_name, category_slug,
         service_name, unit, unit_price, quantity, line_total,
@@ -67,9 +72,22 @@ export default async function BookingDetailPage({
   }
 
   const items = (booking.items || []) as any[]
+  const payments = (booking.payments || []) as any[]
+  const isPaid = payments.some(payment => ['pagado', 'autorizado'].includes(payment.status))
+  const canPay = !isPaid && ['confirmada', 'esperando_pago'].includes(booking.status)
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
+      {paymentResult === 'success' && (
+        <div className="mb-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 font-semibold text-emerald-700">
+          Pago autorizado. Tu reserva quedó confirmada.
+        </div>
+      )}
+      {['failed', 'aborted', 'error', 'invalid'].includes(paymentResult || '') && (
+        <div className="mb-5 rounded-xl border border-orange-500/30 bg-orange-500/10 p-4 font-semibold text-orange-700">
+          El pago no se completó y el cupo fue liberado. Puedes volver a seleccionar el servicio si aún está disponible.
+        </div>
+      )}
       <Link
         href="/mis-reservas"
         className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
@@ -197,6 +215,12 @@ export default async function BookingDetailPage({
             <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Comisión Brasa</dt><dd>{formatCLP(booking.platform_fee)}</dd></div>
             <div className="flex justify-between gap-4 border-t pt-2 font-bold"><dt>Total</dt><dd>{formatCLP(booking.total)}</dd></div>
           </dl>
+          {isPaid && (
+            <p className="mt-4 rounded-lg bg-emerald-500/10 p-3 text-center text-sm font-semibold text-emerald-700">
+              Pago realizado
+            </p>
+          )}
+          {canPay && <WebpayPaymentButton bookingId={booking.id} />}
         </div>
       </section>
     </main>

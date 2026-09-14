@@ -7,6 +7,8 @@ export function bookingStatusLabel(status: string | null | undefined) {
     rechazada: 'Rechazada',
     expirada: 'Solicitud expirada',
     esperando_confirmacion: 'Esperando confirmación',
+    esperando_pago: 'Esperando pago',
+    pago_expirado: 'Pago expirado',
     pendiente: 'Pendiente',
   }
 
@@ -22,7 +24,9 @@ export function bookingStatusClasses(status: string | null | undefined) {
     case 'rechazada':
       return 'bg-destructive/10 text-destructive'
     case 'expirada':
+    case 'pago_expirado':
       return 'bg-orange-500/10 text-orange-700'
+    case 'esperando_pago':
     case 'esperando_confirmacion':
     case 'pendiente':
       return 'bg-amber-500/10 text-amber-700'
