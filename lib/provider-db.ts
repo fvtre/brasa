@@ -45,7 +45,12 @@ export async function getDbProviders(
     if (error) {
       console.error(
         'Error cargando prestadores:',
-        error
+        JSON.stringify({
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+        })
       )
 
       return []
@@ -99,7 +104,12 @@ export async function getDbProvider(
     if (error) {
       console.error(
         `Error cargando prestador ${slug}:`,
-        error
+        JSON.stringify({
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+        })
       )
 
       return null

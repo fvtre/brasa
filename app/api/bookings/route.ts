@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { calculateBrasaCommission } from '@/lib/commission'
 import { createClient } from '@/lib/supabase/server'
 
 type PricingUnit =
@@ -602,14 +603,10 @@ export async function POST(
     ===================================================== */
 
     const platformFee =
-      Math.round(
-        subtotal *
-        0.08
-      )
+      calculateBrasaCommission(subtotal)
 
     const total =
-      subtotal +
-      platformFee
+      subtotal
 
     /* =====================================================
        CREAR BOOKING

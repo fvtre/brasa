@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { getApplicationUrl, getWebpayTransaction } from '@/lib/transbank'
 
-export async function POST(request: Request) {
+async function createWebpayPayment(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
 
   const buyOrder = `BR${booking.code.replace(/[^A-Z0-9]/gi, '').slice(-8)}${randomUUID().replaceAll('-', '').slice(0, 8)}`.slice(0, 26)
   const sessionId = randomUUID().replaceAll('-', '').slice(0, 26)
-  const expiresAt = booking.payment_due_at || new Date(Date.now() + 12 * 60 * 1000).toISOString()
+  const expiresAt = booking.payment_due_at || new Date(Date.now() + 10 * 60 * 1000).toISOString()
 
   const { data: payment, error: paymentError } = await admin
     .from('payments')
@@ -122,5 +122,28 @@ export async function POST(request: Request) {
     await admin.from('payments').update({ status: 'fallido' }).eq('id', payment.id)
     console.error('Webpay create:', error)
     return NextResponse.json({ error: 'Transbank no pudo iniciar el pago.' }, { status: 502 })
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    return await createWebpayPayment(request)
+  } catch (error) {
+    console.error(
+      'Webpay create no controlado:',
+      error instanceof Error ? error.message : error
+    )
+
+    const missingConfiguration =
+      error instanceof Error && error.message.startsWith('Falta ')
+
+    return NextResponse.json(
+      {
+        error: missingConfiguration
+          ? 'Webpay no está configurado en este entorno.'
+          : 'No se pudo iniciar el pago con Webpay.',
+      },
+      { status: missingConfiguration ? 503 : 500 }
+    )
   }
 }

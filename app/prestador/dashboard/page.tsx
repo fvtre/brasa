@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { formatCLP } from '@/lib/format'
+import { calculateBrasaCommission, calculateProviderPayout } from '@/lib/commission'
 import { ProviderBookingActions } from '@/components/provider-booking-actions'
 import { PushNotificationSettings } from '@/components/push-notification-settings'
 
@@ -245,6 +246,34 @@ export default async function ProviderDashboard() {
                     },
                 })
             )
+
+            const {
+                data: paymentRows,
+                error: paymentRowsError,
+            } = await supabase.rpc(
+                'get_my_provider_booking_payments'
+            )
+
+            if (paymentRowsError) {
+                console.error(
+                    'RPC get_my_provider_booking_payments falló:',
+                    paymentRowsError
+                )
+            } else {
+                const paymentByBooking = new Map(
+                    (paymentRows || []).map((row: any) => [
+                        row.booking_id,
+                        row.payment_state,
+                    ])
+                )
+
+                items = items.map((item: any) => ({
+                    ...item,
+                    payment_state:
+                        paymentByBooking.get(item.booking_id) ||
+                        'sin_pago',
+                }))
+            }
         }
     }
 
@@ -278,12 +307,16 @@ export default async function ProviderDashboard() {
                 'completada'
         ).length
 
-    const revenue =
+    const paidBalance =
         items
             .filter(
                 (item: any) =>
-                    item.provider_status ===
-                    'completada'
+                    item.payment_state === 'pagada' &&
+                    ![
+                        'cancelada',
+                        'rechazada',
+                        'expirada',
+                    ].includes(item.provider_status)
             )
             .reduce(
                 (
@@ -291,8 +324,8 @@ export default async function ProviderDashboard() {
                     item: any
                 ) =>
                     sum +
-                    Number(
-                        item.line_total || 0
+                    calculateProviderPayout(
+                        Number(item.line_total || 0)
                     ),
                 0
             )
@@ -367,9 +400,9 @@ export default async function ProviderDashboard() {
 
                 <Kpi
                     icon={DollarSign}
-                    label="Ingresos completados"
+                    label="Saldo confirmado"
                     value={formatCLP(
-                        revenue
+                        paidBalance
                     )}
                 />
             </div>
@@ -428,6 +461,16 @@ export default async function ProviderDashboard() {
                                                         >
                                                             {statusPresentation.label}
                                                         </span>
+
+                                                        {item.payment_state === 'pagada' ? (
+                                                            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                                                                Pagada
+                                                            </span>
+                                                        ) : booking?.status === 'esperando_pago' ? (
+                                                            <span className="rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                                                                Esperando pago
+                                                            </span>
+                                                        ) : null}
                                                     </div>
 
                                                     <p className="mt-1 text-xs text-muted-foreground">
@@ -542,6 +585,16 @@ export default async function ProviderDashboard() {
 
                                                     <p className="mt-1 text-xs text-muted-foreground">
                                                         Total servicio
+                                                    </p>
+                                                    <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+                                                        Comisión Brasa (10%): -{formatCLP(
+                                                            calculateBrasaCommission(item.line_total)
+                                                        )}
+                                                    </p>
+                                                    <p className="mt-1 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                                                        Recibirás {formatCLP(
+                                                            calculateProviderPayout(item.line_total)
+                                                        )}
                                                     </p>
                                                 </div>
                                             </div>

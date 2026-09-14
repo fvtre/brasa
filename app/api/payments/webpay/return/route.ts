@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 
+import { notifyPaymentConfirmed } from '@/lib/payment-notifications'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getApplicationUrl, getWebpayTransaction } from '@/lib/transbank'
 
@@ -73,6 +74,13 @@ async function handleReturn(request: Request) {
       p_response: response,
     })
     if (error) throw error
+
+    try {
+      await notifyPaymentConfirmed(payment.id, payment.booking_id)
+    } catch (notificationError) {
+      console.error('Payment confirmation notification:', notificationError)
+    }
+
     return returnForPayment(token, 'success')
   } catch (error) {
     console.error('Webpay commit:', error)

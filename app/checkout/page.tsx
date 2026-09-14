@@ -794,13 +794,8 @@ export default function CheckoutPage() {
        TOTALES
     ======================================================= */
 
-    const fee =
-        Math.round(
-            total * 0.08
-        )
-
     const totalWithFee =
-        total + fee
+        total
 
     const overBudget =
         budget > 0 &&
@@ -1513,26 +1508,12 @@ export default function CheckoutPage() {
                                 </b>
                             </p>
 
-                            {/* COMISIÓN */}
-
-                            <p className="flex justify-between">
-                                <span className="text-muted-foreground">
-                                    Comisión plataforma (8%)
-                                </span>
-
-                                <b>
-                                    {formatCLP(
-                                        fee
-                                    )}
-                                </b>
-                            </p>
-
                             {/* TOTAL */}
 
                             <div className="border-t pt-3">
                                 <p className="flex justify-between text-base">
                                     <span>
-                                        Total estimado
+                                        Total a pagar
                                     </span>
 
                                     <b>

@@ -46,7 +46,7 @@ export default async function BookingDetailPage({
     .from('bookings')
     .select(`
       id, code, event_name, event_date, event_time, status,
-      comuna, address, guests, budget, subtotal, platform_fee,
+      comuna, address, guests, budget, subtotal,
       total, contact_name, contact_email, contact_phone, notes, payment_due_at,
       created_at,
       payments(id, status, expires_at),
@@ -211,8 +211,7 @@ export default async function BookingDetailPage({
         <div className="rounded-2xl border bg-card p-5">
           <h2 className="font-bold">Resumen de pago</h2>
           <dl className="mt-3 space-y-2 text-sm">
-            <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Subtotal</dt><dd>{formatCLP(booking.subtotal)}</dd></div>
-            <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Comisión Brasa</dt><dd>{formatCLP(booking.platform_fee)}</dd></div>
+            <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Servicios</dt><dd>{formatCLP(booking.subtotal)}</dd></div>
             <div className="flex justify-between gap-4 border-t pt-2 font-bold"><dt>Total</dt><dd>{formatCLP(booking.total)}</dd></div>
           </dl>
           {isPaid && (
@@ -220,7 +219,12 @@ export default async function BookingDetailPage({
               Pago realizado
             </p>
           )}
-          {canPay && <WebpayPaymentButton bookingId={booking.id} />}
+          {canPay && (
+            <WebpayPaymentButton
+              bookingId={booking.id}
+              paymentDueAt={booking.payment_due_at}
+            />
+          )}
         </div>
       </section>
     </main>

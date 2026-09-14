@@ -35,7 +35,6 @@ type BookingRow = {
   event_time: string
   status: string
   subtotal: number
-  platform_fee: number
   total: number
   comuna: string | null
   address: string
@@ -89,7 +88,6 @@ export default async function ClientDashboard() {
         event_time,
         status,
         subtotal,
-        platform_fee,
         total,
         comuna,
         address,
@@ -412,15 +410,8 @@ export default async function ClientDashboard() {
 
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-3">
                       <div className="text-xs text-muted-foreground">
-                        Subtotal{' '}
-                        {formatCLP(
-                          booking.subtotal
-                        )}
-                        {' · '}
-                        Comisión{' '}
-                        {formatCLP(
-                          booking.platform_fee
-                        )}
+                        Servicios{' '}
+                        {formatCLP(booking.subtotal)}
                       </div>
 
                       <Link
