@@ -208,7 +208,7 @@ export default function ProviderOnboarding() {
       }
 
       window.location.assign(
-        '/prestador/servicios'
+        '/prestador/pagos'
       )
     } catch (err: any) {
       console.error(

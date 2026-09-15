@@ -1,0 +1,16 @@
+export const CHILE_BANKS = [
+  ['001', 'Banco de Chile'],
+  ['009', 'Banco Internacional'],
+  ['012', 'BancoEstado'],
+  ['014', 'Scotiabank Chile'],
+  ['016', 'Banco de Crédito e Inversiones (BCI)'],
+  ['028', 'Banco BICE'],
+  ['031', 'HSBC Bank Chile'],
+  ['037', 'Banco Santander Chile'],
+  ['039', 'Itaú Corpbanca'],
+  ['049', 'Banco Security'],
+  ['051', 'Banco Falabella'],
+  ['053', 'Banco Ripley'],
+  ['055', 'Banco Consorcio'],
+  ['504', 'Tenpo'],
+] as const

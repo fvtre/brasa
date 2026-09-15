@@ -43,13 +43,13 @@ export async function notifyPaymentConfirmed(paymentId: string, bookingId: strin
       userId: booking.client_id,
       title: 'Pago confirmado',
       body: `${eventName}: recibimos tu pago y la reserva quedó confirmada.`,
-      href: `/mis-reservas/${encodeURIComponent(booking.code)}`,
+      href: '/mensajes',
     },
     ...Array.from(providerServices, ([userId, services]) => ({
       userId,
       title: 'Pago confirmado',
       body: `${eventName}: el cliente pagó ${services.join(', ')}.`,
-      href: '/prestador/dashboard#solicitudes',
+      href: '/mensajes',
     })),
   ]
 

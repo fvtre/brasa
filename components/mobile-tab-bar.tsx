@@ -8,6 +8,7 @@ import {
   Home,
   LayoutDashboard,
   ListChecks,
+  MessageCircle,
   Search,
   ShoppingBag,
   UserRound,
@@ -37,14 +38,16 @@ export function MobileTabBar() {
           { href: '/prestador/dashboard#solicitudes', label: 'Solicitudes', icon: ListChecks },
           { href: '/prestador/servicios', label: 'Servicios', icon: Wrench },
           { href: '/prestador/disponibilidad', label: 'Agenda', icon: CalendarDays },
-          { href: '/prestador/perfil', label: 'Perfil', icon: UserRound },
+          { href: '/mensajes', label: 'Mensajes', icon: MessageCircle },
+          { href: '/prestador/pagos', label: 'Pagos', icon: UserRound },
         ]
       : profile?.role === 'administrador'
         ? [
             { href: '/admin/dashboard', label: 'Panel', icon: LayoutDashboard },
-            { href: '/categorias', label: 'Categorías', icon: Grid2X2 },
+            { href: '/admin/reservas', label: 'Reservas', icon: CalendarDays },
             { href: '/admin/prestadores', label: 'Prestadores', icon: Wrench },
             { href: '/admin/usuarios', label: 'Usuarios', icon: Users },
+            { href: '/admin/liquidaciones', label: 'Pagos', icon: ShoppingBag },
           ]
         : [
             { href: '/', label: 'Inicio', icon: Home },

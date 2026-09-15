@@ -57,6 +57,10 @@ const CLIENT_NAV: NavItem[] = [
         href: '/comparar-precios',
         label: 'Comparar precios',
     },
+    {
+        href: '/mensajes',
+        label: 'Mensajes',
+    },
 ]
 
 const PROVIDER_NAV: NavItem[] = [
@@ -80,23 +84,35 @@ const PROVIDER_NAV: NavItem[] = [
         href: '/prestador/perfil',
         label: 'Perfil',
     },
+    {
+        href: '/prestador/pagos',
+        label: 'Pagos',
+    },
+    {
+        href: '/mensajes',
+        label: 'Mensajes',
+    },
 ]
 const ADMIN_NAV: NavItem[] = [
     {
         href: '/admin/dashboard',
-        label: 'Dashboard',
+        label: 'Panel',
     },
     {
-        href: '/categorias',
-        label: 'Categorías',
+        href: '/admin/reservas',
+        label: 'Reservas',
     },
     {
-        href: '/proveedores',
+        href: '/admin/prestadores',
         label: 'Prestadores',
     },
     {
-        href: '/comparar-precios',
-        label: 'Comparar precios',
+        href: '/admin/usuarios',
+        label: 'Usuarios',
+    },
+    {
+        href: '/admin/liquidaciones',
+        label: 'Liquidaciones',
     },
 ]
 
@@ -132,17 +148,14 @@ export function SiteHeader() {
                     : CLIENT_NAV
 
     /*
-     * Solo cliente/admin pueden organizar evento.
+     * Solo clientes organizan eventos desde el menú operativo.
      *
      * Visitante NO ve Mi evento porque ahora
      * /mi-evento está protegido por servidor.
      */
     const showClientEvent =
         !!user &&
-        (
-            role === 'cliente' ||
-            role === 'administrador'
-        )
+        role === 'cliente'
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-border bg-background/85 backdrop-blur">
@@ -186,7 +199,7 @@ export function SiteHeader() {
                 {/* ACCIONES */}
                 <div className="flex items-center gap-2">
 
-                    {/* MI EVENTO SOLO CLIENTE / ADMIN */}
+                    {/* MI EVENTO SOLO CLIENTE */}
                     {showClientEvent && (
                         <Link
                             href="/mi-evento"
