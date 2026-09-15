@@ -331,14 +331,14 @@ export default async function ProviderDashboard() {
             )
 
     return (
-        <div className="mx-auto max-w-6xl px-4 py-10">
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:py-10">
             <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <p className="text-sm font-semibold text-primary">
                         Prestador
                     </p>
 
-                    <h1 className="mt-1 text-3xl font-extrabold">
+                    <h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">
                         {provider?.business_name ||
                             'Panel de prestador'}
                     </h1>
@@ -362,7 +362,7 @@ export default async function ProviderDashboard() {
 
             <PushNotificationSettings />
 
-            <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-5">
+            <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                 <Kpi
                     icon={CalendarClock}
                     label="Solicitudes"

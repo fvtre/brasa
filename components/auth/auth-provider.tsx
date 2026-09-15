@@ -37,6 +37,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null)
   const [profile, setProfile] = React.useState<Profile | null>(null)
   const [loading, setLoading] = React.useState(true)
+  const syncedPushUser = React.useRef<string | null>(null)
+
+  const syncExistingPush = React.useCallback(async (userId: string) => {
+    if (syncedPushUser.current === userId || typeof window === 'undefined') return
+    if (!window.isSecureContext || !('serviceWorker' in navigator) || !('PushManager' in window)) return
+
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js')
+      const subscription = await registration.pushManager.getSubscription()
+      if (!subscription) return
+
+      const response = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subscription.toJSON()),
+      })
+      if (response.ok) syncedPushUser.current = userId
+    } catch (error) {
+      console.error('No se pudo sincronizar la suscripción push:', error)
+    }
+  }, [])
 
   const load = React.useCallback(async () => {
     if (!supabase) {
@@ -53,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(current)
 
     if (!current) {
+      syncedPushUser.current = null
       setProfile(null)
       setLoading(false)
       return
@@ -69,7 +91,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) console.error('AuthProvider profiles:', error.message)
     setProfile((data as Profile | null) ?? null)
     setLoading(false)
-  }, [supabase])
+    void syncExistingPush(current.id)
+  }, [supabase, syncExistingPush])
 
   React.useEffect(() => {
     load()
@@ -85,6 +108,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = React.useCallback(async () => {
     if (!supabase) return
+    try {
+      if (window.isSecureContext && 'serviceWorker' in navigator && 'PushManager' in window) {
+        const registration = await navigator.serviceWorker.ready
+        const subscription = await registration.pushManager.getSubscription()
+        if (subscription) {
+          await fetch('/api/push/subscribe', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: subscription.endpoint }),
+          })
+        }
+      }
+    } catch (error) {
+      console.error('No se pudo desvincular la suscripción push:', error)
+    }
+    syncedPushUser.current = null
     await supabase.auth.signOut()
     window.location.assign('/')
   }, [supabase])

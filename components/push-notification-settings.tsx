@@ -31,7 +31,15 @@ export function PushNotificationSettings() {
     void navigator.serviceWorker
       .register('/sw.js')
       .then((registration) => registration.pushManager.getSubscription())
-      .then((subscription) => setEnabled(Boolean(subscription)))
+      .then(async (subscription) => {
+        setEnabled(Boolean(subscription))
+        if (!subscription) return
+        await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(subscription.toJSON()),
+        })
+      })
       .catch(() => setSupported(false))
   }, [])
 
@@ -69,7 +77,7 @@ export function PushNotificationSettings() {
       }
 
       setEnabled(true)
-      setMessage('Te avisaremos cuando llegue una nueva reserva.')
+      setMessage('Te avisaremos sobre solicitudes, respuestas, pagos y mensajes.')
     } catch (error: any) {
       setMessage(error?.message || 'No se pudo activar el push.')
     } finally {
@@ -80,20 +88,20 @@ export function PushNotificationSettings() {
   if (!supported) return null
 
   return (
-    <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+    <div className="mt-5 flex flex-col items-stretch justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center">
       <div className="flex min-w-0 items-center gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
           {enabled ? <BellRing className="size-5" /> : <Bell className="size-5" />}
         </span>
         <div>
-          <p className="font-semibold">Avisos de nuevas reservas</p>
+          <p className="font-semibold">Notificaciones de Brasa</p>
           <p className="text-sm text-muted-foreground">
             {message || (enabled ? 'Notificaciones activadas en este dispositivo.' : 'Recibe un aviso aunque Brasa esté cerrada.')}
           </p>
         </div>
       </div>
       {!enabled && (
-        <Button type="button" size="sm" onClick={enablePush} disabled={busy}>
+        <Button type="button" size="sm" className="w-full sm:w-auto" onClick={enablePush} disabled={busy}>
           {busy ? <LoaderCircle className="animate-spin" /> : <Bell />}
           Activar avisos
         </Button>

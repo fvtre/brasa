@@ -41,6 +41,11 @@ export function ProviderBookingActions({ itemId, status }: { itemId: string; sta
 
       if (rpcError) throw rpcError
       if (!data?.ok) throw new Error('No se pudo actualizar la solicitud.')
+      void fetch('/api/push/booking-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId, action }),
+      }).catch((pushError) => console.error('No se pudo avisar al cliente:', pushError))
       router.refresh()
     } catch (err: any) {
       console.error('Error actualizando solicitud:', err)

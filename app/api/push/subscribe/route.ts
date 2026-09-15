@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
 type SubscriptionBody = {
@@ -29,7 +30,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Suscripción push inválida' }, { status: 400 })
   }
 
-  const { error } = await supabase.from('push_subscriptions').upsert(
+  const admin = createAdminClient()
+  const { error } = await admin.from('push_subscriptions').upsert(
     {
       user_id: user.id,
       endpoint,
@@ -38,7 +40,7 @@ export async function POST(request: Request) {
       user_agent: request.headers.get('user-agent'),
       updated_at: new Date().toISOString(),
     },
-    { onConflict: 'user_id,endpoint' },
+    { onConflict: 'endpoint' },
   )
 
   if (error) {
@@ -66,7 +68,8 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'Suscripción push inválida' }, { status: 400 })
   }
 
-  const { error } = await supabase
+  const admin = createAdminClient()
+  const { error } = await admin
     .from('push_subscriptions')
     .delete()
     .eq('user_id', user.id)

@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { formatCLP } from '@/lib/format'
 import { BookingExpiryCountdown } from '@/components/booking-expiry-countdown'
+import { PushNotificationSettings } from '@/components/push-notification-settings'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -191,7 +192,7 @@ export default async function ClientDashboard() {
         0
       )
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:py-10">
       {/* HEADER */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -199,7 +200,7 @@ export default async function ClientDashboard() {
             Cliente
           </p>
 
-          <h1 className="mt-1 text-3xl font-extrabold">
+          <h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">
             Hola,{' '}
             {profile.full_name ||
               'bienvenido'}
@@ -223,7 +224,9 @@ export default async function ClientDashboard() {
       </div>
 
       {/* KPIs */}
-      <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <PushNotificationSettings />
+
+      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi
           icon={CalendarDays}
           label="Eventos activos"
