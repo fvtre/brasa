@@ -407,8 +407,8 @@ export default async function ProviderDashboard() {
                 />
             </div>
 
-            <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_340px]">
-                <Card id="solicitudes" className="scroll-mt-24">
+            <div className="mt-8 grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+                <Card id="solicitudes" className="min-w-0 scroll-mt-24">
                     <CardHeader>
                         <CardTitle>
                             Solicitudes recientes
@@ -446,9 +446,9 @@ export default async function ProviderDashboard() {
                                     return (
                                         <div
                                             key={item.id}
-                                            className="rounded-xl border p-4"
+                                            className="min-w-0 rounded-xl border p-4"
                                         >
-                                            <div className="flex flex-wrap justify-between gap-4">
+                                            <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:justify-between">
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex flex-wrap items-center gap-2">
                                                         <b>
@@ -492,7 +492,7 @@ export default async function ProviderDashboard() {
                                                         personas
                                                     </p>
 
-                                                    <div className="mt-3 rounded-lg border border-border/70 bg-muted/20 px-3 pb-3">
+                                                    <div className="mt-3 min-w-0 rounded-lg border border-border/70 bg-muted/20 px-3 pb-3">
                                                     <p className="mt-3 font-medium">
                                                         {
                                                             item.service_name
@@ -537,7 +537,7 @@ export default async function ProviderDashboard() {
                                                         )}
 
                                                         {booking?.contact_email && (
-                                                            <span className="flex items-center gap-1 sm:col-span-2">
+                                                            <span className="flex min-w-0 items-center gap-1 break-all sm:col-span-2">
                                                                 <Mail className="size-3.5" />
                                                                 {
                                                                     booking.contact_email
@@ -547,7 +547,7 @@ export default async function ProviderDashboard() {
                                                     </div>
 
                                                     {booking?.address && (
-                                                        <p className="mt-2 text-xs text-muted-foreground">
+                                                        <p className="mt-2 break-words text-xs text-muted-foreground">
                                                             Dirección:{' '}
                                                             {
                                                                 booking.address
@@ -576,7 +576,7 @@ export default async function ProviderDashboard() {
                                                     </div>
                                                 </div>
 
-                                                <div className="text-right">
+                                                <div className="min-w-0 border-t pt-3 text-left sm:border-t-0 sm:pt-0 sm:text-right">
                                                     <b className="text-lg">
                                                         {formatCLP(
                                                             item.line_total

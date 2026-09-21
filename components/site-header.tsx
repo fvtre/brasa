@@ -197,13 +197,13 @@ export function SiteHeader() {
                 </nav>
 
                 {/* ACCIONES */}
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-1 sm:gap-2">
 
                     {/* MI EVENTO SOLO CLIENTE */}
                     {showClientEvent && (
                         <Link
                             href="/mi-evento"
-                            className="relative inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-muted"
+                            className="relative hidden h-9 items-center gap-2 rounded-lg border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-muted md:inline-flex"
                         >
                             <ShoppingBag size={16} />
 
@@ -251,6 +251,7 @@ export function SiteHeader() {
                                     nativeButton={false}
                                     size="sm"
                                     variant="outline"
+                                    className="hidden md:inline-flex"
                                     render={
                                         <Link href={dashboard} />
                                     }

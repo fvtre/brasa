@@ -39,7 +39,7 @@ export function MobileTabBar() {
           { href: '/prestador/servicios', label: 'Servicios', icon: Wrench },
           { href: '/prestador/disponibilidad', label: 'Agenda', icon: CalendarDays },
           { href: '/mensajes', label: 'Mensajes', icon: MessageCircle },
-          { href: '/prestador/pagos', label: 'Pagos', icon: UserRound },
+          { href: '/prestador/perfil', label: 'Perfil', icon: UserRound },
         ]
       : profile?.role === 'administrador'
         ? [

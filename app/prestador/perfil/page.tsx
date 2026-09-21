@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   BriefcaseBusiness,
@@ -1000,7 +1001,8 @@ export default function ProviderProfilePage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
-      <div>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
         <p className="text-sm font-semibold text-primary">
           Prestador
         </p>
@@ -1013,6 +1015,10 @@ export default function ProviderProfilePage() {
           Esta información será visible
           para los clientes en Brasa.
         </p>
+        </div>
+        <Button nativeButton={false} variant="outline" render={<Link href="/prestador/pagos" />}>
+          Pagos y cuenta bancaria
+        </Button>
       </div>
 
       {error && (
