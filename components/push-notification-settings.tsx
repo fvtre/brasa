@@ -32,15 +32,22 @@ export function PushNotificationSettings() {
       .register('/sw.js')
       .then((registration) => registration.pushManager.getSubscription())
       .then(async (subscription) => {
-        setEnabled(Boolean(subscription))
-        if (!subscription) return
-        await fetch('/api/push/subscribe', {
+        if (!subscription || Notification.permission !== 'granted') {
+          setEnabled(false)
+          return
+        }
+        const response = await fetch('/api/push/subscribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(subscription.toJSON()),
         })
+        setEnabled(response.ok)
+        if (!response.ok) setMessage('No se pudo sincronizar este dispositivo. Activa los avisos nuevamente.')
       })
-      .catch(() => setSupported(false))
+      .catch(() => {
+        setEnabled(false)
+        setMessage('No se pudo conectar con las notificaciones. Intenta activarlas otra vez.')
+      })
   }, [])
 
   async function enablePush() {

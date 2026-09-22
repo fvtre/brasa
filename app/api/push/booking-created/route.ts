@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { sendWebPush } from '@/lib/push'
+import { claimPushEvent, deliverPushToUser, releasePushEvent } from '@/lib/push-delivery'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
@@ -52,38 +52,24 @@ export async function POST(request: Request) {
   let sent = 0
 
   for (const [ownerId, serviceNames] of recipients) {
-    const { error: claimError } = await admin.from('push_delivery_events').insert({
-      booking_id: booking.id,
-      user_id: ownerId,
-    })
+    const eventKey = `booking-created:${booking.id}:${ownerId}`
+    const title = 'Nueva solicitud de evento'
+    const body = `${booking.event_name}: ${serviceNames.join(', ')}`
+    // El trigger booking_item_created_actions ya guarda el aviso en la bandeja.
 
-    if (claimError?.code === '23505') continue
-    if (claimError) throw claimError
+    if (!(await claimPushEvent(eventKey, ownerId))) continue
 
-    const { data: subscriptions, error: subscriptionsError } = await admin
-      .from('push_subscriptions')
-      .select('id,endpoint,p256dh,auth')
-      .eq('user_id', ownerId)
-
-    if (subscriptionsError) throw subscriptionsError
-
-    for (const subscription of subscriptions || []) {
-      try {
-        await sendWebPush(subscription, {
-          title: 'Nueva solicitud de evento',
-          body: `${booking.event_name}: ${serviceNames.join(', ')}`,
-          url: '/prestador/dashboard#solicitudes',
-          tag: `booking-${booking.id}`,
-        })
-        sent += 1
-      } catch (error: any) {
-        const statusCode = Number(error?.statusCode || 0)
-        if (statusCode === 404 || statusCode === 410) {
-          await admin.from('push_subscriptions').delete().eq('id', subscription.id)
-          continue
-        }
-        console.error('Web Push delivery:', error)
-      }
+    let recipientSent = 0
+    try {
+      recipientSent = await deliverPushToUser(ownerId, {
+        title,
+        body,
+        url: '/prestador/dashboard#solicitudes',
+        tag: eventKey,
+      })
+      sent += recipientSent
+    } finally {
+      if (recipientSent === 0) await releasePushEvent(eventKey, ownerId)
     }
   }
 

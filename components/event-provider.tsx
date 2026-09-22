@@ -1105,7 +1105,7 @@ export function EventProvider({
           }
 
           try {
-            await fetch('/api/push/booking-created', {
+            const notificationResponse = await fetch('/api/push/booking-created', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -1114,6 +1114,9 @@ export function EventProvider({
                 bookingId: booking.id,
               }),
             })
+            if (!notificationResponse.ok) {
+              console.error('La reserva se creó, pero falló el aviso:', await notificationResponse.text())
+            }
           } catch (pushError) {
             // La reserva ya fue creada: un fallo del canal push no debe anularla.
             console.error('No se pudo despachar el aviso push:', pushError)

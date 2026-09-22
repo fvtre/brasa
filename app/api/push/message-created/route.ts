@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { claimPushEvent, deliverPushToUser } from '@/lib/push-delivery'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { claimPushEvent, deliverPushToUser, releasePushEvent } from '@/lib/push-delivery'
 import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: Request) {
@@ -35,25 +34,23 @@ export async function POST(request: Request) {
   const recipientId = senderIsClient ? provider.owner_id : conversation.client_id
   const senderName = senderIsClient ? (booking?.contact_name || 'Tu cliente') : provider.business_name
   const eventKey = `message:${message.id}:${recipientId}`
+  // El trigger messages_notify_recipient ya guardó el aviso al insertar el mensaje.
+
   if (!(await claimPushEvent(eventKey, recipientId))) {
     return NextResponse.json({ ok: true, sent: 0, duplicate: true })
   }
 
-  const admin = createAdminClient()
-  await admin.from('notifications').insert({
-    user_id: recipientId,
-    type: 'message',
-    title: `Nuevo mensaje de ${senderName}`,
-    body: message.body.slice(0, 160),
-    href: '/mensajes',
-  })
-
-  const sent = await deliverPushToUser(recipientId, {
-    title: `Nuevo mensaje de ${senderName}`,
-    body: message.body.slice(0, 120),
-    url: '/mensajes',
-    tag: eventKey,
-  })
+  let sent = 0
+  try {
+    sent = await deliverPushToUser(recipientId, {
+      title: `Nuevo mensaje de ${senderName}`,
+      body: message.body.slice(0, 120),
+      url: '/mensajes',
+      tag: eventKey,
+    })
+  } finally {
+    if (sent === 0) await releasePushEvent(eventKey, recipientId)
+  }
 
   return NextResponse.json({ ok: true, sent })
 }

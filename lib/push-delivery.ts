@@ -22,6 +22,15 @@ export async function claimPushEvent(eventKey: string, userId: string) {
   return true
 }
 
+export async function releasePushEvent(eventKey: string, userId: string) {
+  const admin = createAdminClient()
+  const { error } = await admin.from('push_event_deliveries')
+    .delete()
+    .eq('event_key', eventKey)
+    .eq('user_id', userId)
+  if (error) throw error
+}
+
 export async function deliverPushToUser(userId: string, payload: PushPayload) {
   const admin = createAdminClient()
   const { data: subscriptions, error } = await admin

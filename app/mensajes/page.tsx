@@ -66,11 +66,18 @@ export default function MessagesPage() {
     else {
       setText('')
       await loadMessages()
-      void fetch('/api/push/message-created', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messageId: created.id }),
-      }).catch((pushError) => console.error('No se pudo avisar del mensaje:', pushError))
+      try {
+        const notificationResponse = await fetch('/api/push/message-created', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messageId: created.id }),
+        })
+        if (!notificationResponse.ok) {
+          console.error('El mensaje se envió, pero falló el aviso:', await notificationResponse.text())
+        }
+      } catch (notificationError) {
+        console.error('El mensaje se envió, pero no se pudo enviar el aviso:', notificationError)
+      }
     }
     setSending(false)
   }

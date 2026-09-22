@@ -10,6 +10,7 @@ import {
   Clock3,
   ArrowRight,
   CheckCircle2,
+  ArrowLeftRight,
 } from 'lucide-react'
 
 import { requireRole } from '@/lib/auth'
@@ -225,6 +226,14 @@ export default async function ClientDashboard() {
 
       {/* KPIs */}
       <PushNotificationSettings />
+
+      <Link href="/comparar-precios" className="mt-6 flex min-w-0 items-center justify-between gap-4 rounded-2xl border border-primary/25 bg-primary/5 p-4 transition hover:bg-primary/10 sm:p-5">
+        <span className="flex min-w-0 items-center gap-3">
+          <ArrowLeftRight className="size-6 shrink-0 text-primary" />
+          <span className="min-w-0"><strong className="block">Comparar precios</strong><span className="block text-sm text-muted-foreground">Compara insumos para tu evento entre tiendas.</span></span>
+        </span>
+        <ArrowRight className="size-5 shrink-0 text-primary" />
+      </Link>
 
       <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi

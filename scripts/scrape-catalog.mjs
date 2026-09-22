@@ -26,14 +26,17 @@ function parsePrice(html, source) {
     return price
   }
 
+  // Related-product carousels must never supply the price for the main item.
+  const productHtml = html.split(/Complementos para tu compra|Productos relacionados/i)[0]
   if (source.pricePatterns) {
     for (const pattern of source.pricePatterns) {
-      const match = html.match(new RegExp(pattern, "i"))
+      const match = productHtml.match(new RegExp(pattern, "i"))
       if (match) {
         const price = Number(match[1].replace(/\./g, ""))
         if (Number.isFinite(price) && price > 0) return validate(price)
       }
     }
+    throw new Error(`No hay precio verificable del producto principal en ${source.url}`)
   }
 
   const jsonLd = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)]
@@ -95,19 +98,26 @@ async function findOrCreateProduct(source) {
 }
 
 const captures = []
+const failures = []
 for (const source of config.sources) {
-  const url = safeUrl(source.url)
-  const response = await fetch(url, { headers: { "User-Agent": "BrasaPriceMonitor/1.0 (+contacto del proyecto)", Accept: "text/html" }, signal: AbortSignal.timeout(20_000) })
-  if (!response.ok) throw new Error(`${response.status} al consultar ${url}`)
-  const price = parsePrice(await response.text(), source)
-  captures.push({ ...source, price, capturedAt: new Date().toISOString() })
+  try {
+    const url = safeUrl(source.url)
+    const response = await fetch(url, { headers: { "User-Agent": "BrasaPriceMonitor/1.0 (+contacto del proyecto)", Accept: "text/html" }, signal: AbortSignal.timeout(20_000) })
+    if (!response.ok) throw new Error(`${response.status} al consultar ${url}`)
+    const price = parsePrice(await response.text(), source)
+    captures.push({ ...source, price, capturedAt: new Date().toISOString() })
+  } catch (error) {
+    failures.push({ url: source.url, reason: error instanceof Error ? error.message : String(error) })
+  }
 }
 
 if (!commit) {
-  console.log(JSON.stringify({ mode: "dry-run", captures }, null, 2))
+  console.log(JSON.stringify({ mode: "dry-run", captures, failures }, null, 2))
   console.log("Usa --commit cuando hayas verificado las capturas.")
   process.exit(0)
 }
+
+if (captures.length === 0) throw new Error("No hay capturas verificadas para guardar.")
 
 for (const capture of captures) {
   const catalogProviderId = await findOrCreateProvider(capture)
@@ -115,3 +125,4 @@ for (const capture of captures) {
   await rest("product_prices", { method: "POST", body: JSON.stringify({ product_id: productId, catalog_provider_id: catalogProviderId, price: capture.price, price_per_kg: capture.pricePerKg ? capture.price : null, stock: true, product_url: capture.url, captured_at: capture.capturedAt }) })
 }
 console.log(`Capturas guardadas: ${captures.length}`)
+if (failures.length) console.warn(JSON.stringify({ failures }, null, 2))

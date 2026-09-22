@@ -33,6 +33,86 @@
       "minPrice": 3000,
       "maxPrice": 10000,
       "pricePatterns": ["product:price:amount[^>]+content=[\"']?([\\d.]+)", "\\$([\\d.]+)\\s*x\\s*kg"]
+    },
+    {
+      "provider": "Jumbo",
+      "product": "Coca-Cola Original 3 L",
+      "category": "Bebidas",
+      "unit": "botella",
+      "url": "https://www.jumbo.cl/bebida-coca-cola-3-l-botella-desechable/p",
+      "minPrice": 1500,
+      "maxPrice": 6000,
+      "pricePatterns": ["product:price:amount[^>]+content=[\"']?([\\d.]+)"]
+    },
+    {
+      "provider": "Lider",
+      "product": "Coca-Cola Original 3 L",
+      "category": "Bebidas",
+      "unit": "botella",
+      "url": "https://super.lider.cl/ip/bebidas/00780161032323",
+      "minPrice": 1500,
+      "maxPrice": 6000,
+      "pricePatterns": ["El precio actual es CLP\\$([\\d.]+)"]
+    },
+    {
+      "provider": "Lider",
+      "product": "Carbón premium 2,5 kg",
+      "category": "Parrilla",
+      "unit": "bolsa",
+      "url": "https://super.lider.cl/ip/ferreteria-y-jardineria/00780958350035",
+      "minPrice": 1500,
+      "maxPrice": 8000,
+      "pricePatterns": ["El precio actual es CLP\\$([\\d.]+)"]
+    },
+    {
+      "provider": "Lider",
+      "product": "Carbón vegetal 2,5 kg",
+      "category": "Parrilla",
+      "unit": "bolsa",
+      "url": "https://super.lider.cl/ip/parrillas-y-accesorios/00641226950125",
+      "minPrice": 1500,
+      "maxPrice": 8000,
+      "pricePatterns": ["El precio actual es CLP\\$([\\d.]+)"]
+    },
+    {
+      "provider": "Lider",
+      "product": "Papas fritas caseras 400 g",
+      "category": "Picoteo",
+      "unit": "bolsa",
+      "url": "https://super.lider.cl/ip/snacks-y-picoteo/00780242000417",
+      "minPrice": 1000,
+      "maxPrice": 7000,
+      "pricePatterns": ["El precio actual es CLP\\$([\\d.]+)"]
+    },
+    {
+      "provider": "Jumbo",
+      "product": "Fanta sin azúcar 3 L",
+      "category": "Bebidas",
+      "unit": "botella",
+      "url": "https://www.jumbo.cl/bebida-fanta-botella-3-l-zero/p",
+      "minPrice": 1500,
+      "maxPrice": 6000,
+      "pricePatterns": ["product:price:amount[^>]+content=[\"']?([\\d.]+)"]
+    },
+    {
+      "provider": "Jumbo",
+      "product": "Sprite 3 L",
+      "category": "Bebidas",
+      "unit": "botella",
+      "url": "https://www.jumbo.cl/bebida-sprite-3-l-botella-desechable/p",
+      "minPrice": 1500,
+      "maxPrice": 6000,
+      "pricePatterns": ["product:price:amount[^>]+content=[\"']?([\\d.]+)"]
+    },
+    {
+      "provider": "Jumbo",
+      "product": "Coca-Cola Zero 3 L",
+      "category": "Bebidas",
+      "unit": "botella",
+      "url": "https://www.jumbo.cl/bebida-coca-cola-zero-3-l/p",
+      "minPrice": 1500,
+      "maxPrice": 6000,
+      "pricePatterns": ["product:price:amount[^>]+content=[\"']?([\\d.]+)"]
     }
   ]
 }

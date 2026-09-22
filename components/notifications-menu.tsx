@@ -55,6 +55,19 @@ export function NotificationsMenu() {
     return () => { void supabase.removeChannel(channel) }
   }, [load, supabase, user])
 
+  React.useEffect(() => {
+    if (!user) return
+    const refresh = () => { if (!document.hidden) void load() }
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    const timer = window.setInterval(refresh, 30000)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+      window.clearInterval(timer)
+    }
+  }, [load, user])
+
   if (!user) return null
 
   async function mark(id: string) {

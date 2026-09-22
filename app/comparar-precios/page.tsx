@@ -14,7 +14,7 @@ export default async function CompararPreciosPage() {
     <div className="mx-auto max-w-6xl px-4 py-10">
       <p className="text-sm font-semibold text-primary">Price Intelligence · datos reales</p>
       <h1 className="mt-1 text-3xl font-extrabold">Compara productos e insumos</h1>
-      <p className="mt-2 max-w-2xl text-muted-foreground">Brasa compara el último precio capturado y el despacho informado para ordenar las alternativas por costo total.</p>
+      <p className="mt-2 max-w-2xl text-muted-foreground">Precios capturados de tiendas reales. Revisa la fecha y la fuente antes de comprar; el despacho puede variar según tu comuna.</p>
       {lastUpdate && <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><Clock3 size={13} />Última captura: {new Intl.DateTimeFormat("es-CL", { dateStyle: "medium", timeStyle: "short" }).format(lastUpdate)}</p>}
 
       {groups.length === 0 ? (
@@ -34,7 +34,7 @@ export default async function CompararPreciosPage() {
                   <div key={row.provider} className={`rounded-xl border p-4 ${index === 0 ? "border-primary/40 bg-primary/5" : ""}`}>
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <div className="flex flex-wrap items-center gap-2"><b>{row.provider}</b>{index === 0 && <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary"><BadgeCheck size={12} />Mejor costo total</span>}</div>
+                        <div className="flex flex-wrap items-center gap-2"><b>{row.provider}</b>{index === 0 && group.rows.length > 1 && <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary"><BadgeCheck size={12} />Menor precio registrado</span>}</div>
                         <p className="mt-1 text-xs text-muted-foreground"><Truck size={12} className="mr-1 inline" />Despacho {row.delivery ? formatCLP(row.delivery) : "no informado"}</p>
                         {row.productUrl && <Link href={row.productUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">Ver fuente <ExternalLink size={11} /></Link>}
                       </div>

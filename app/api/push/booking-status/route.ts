@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { claimPushEvent, deliverPushToUser } from '@/lib/push-delivery'
+import { claimPushEvent, deliverPushToUser, releasePushEvent } from '@/lib/push-delivery'
 import { createClient } from '@/lib/supabase/server'
 
 type Action = 'accept' | 'reject'
@@ -33,17 +33,26 @@ export async function POST(request: Request) {
   }
 
   const eventKey = `booking-item:${item.id}:${expectedStatus}`
+  const accepted = action === 'accept'
+  const title = accepted ? 'Solicitud aceptada' : 'Solicitud rechazada'
+  const body = `${item.provider_name} ${accepted ? 'aceptó' : 'rechazó'} ${item.service_name} para ${booking.event_name}.`
+  // El trigger booking_item_status_notification ya guarda el aviso en la bandeja.
+
   if (!(await claimPushEvent(eventKey, booking.client_id))) {
     return NextResponse.json({ ok: true, sent: 0, duplicate: true })
   }
 
-  const accepted = action === 'accept'
-  const sent = await deliverPushToUser(booking.client_id, {
-    title: accepted ? 'Solicitud aceptada' : 'Solicitud rechazada',
-    body: `${item.provider_name} ${accepted ? 'aceptó' : 'rechazó'} ${item.service_name} para ${booking.event_name}.`,
-    url: `/mis-reservas/${booking.code}`,
-    tag: eventKey,
-  })
+  let sent = 0
+  try {
+    sent = await deliverPushToUser(booking.client_id, {
+      title,
+      body,
+      url: `/mis-reservas/${booking.code}`,
+      tag: eventKey,
+    })
+  } finally {
+    if (sent === 0) await releasePushEvent(eventKey, booking.client_id)
+  }
 
   return NextResponse.json({ ok: true, sent })
 }
