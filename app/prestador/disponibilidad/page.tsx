@@ -306,20 +306,37 @@ export default function AvailabilityPage() {
             provider.id
           )
 
-          const { data: categoriesData, error: categoriesError } =
-            await supabase
+          const [categoriesResult, servicesResult] = await Promise.all([
+            supabase
               .from('provider_categories')
               .select('category_slug')
               .eq('provider_id', provider.id)
-              .order('category_slug')
+              .order('category_slug'),
+            supabase
+              .from('provider_services')
+              .select('category_slug')
+              .eq('provider_id', provider.id)
+              .eq('active', true),
+          ])
+
+          const { data: categoriesData, error: categoriesError } = categoriesResult
+          const { data: servicesData, error: servicesError } = servicesResult
 
           if (categoriesError) {
             throw categoriesError
           }
 
+          if (servicesError) {
+            throw servicesError
+          }
+
+          const serviceCategories = new Set(
+            (servicesData || []).map((item) => item.category_slug).filter(Boolean)
+          )
+
           const categories = (categoriesData || [])
             .map((item) => item.category_slug)
-            .filter(Boolean)
+            .filter((categorySlug) => Boolean(categorySlug) && serviceCategories.has(categorySlug))
 
           const categoryToLoad =
             categories.includes(selectedCategory)
@@ -576,7 +593,7 @@ export default function AvailabilityPage() {
       }
 
       setSuccess(
-        'Disponibilidad agregada correctamente.'
+        `Disponibilidad agregada para ${selectedCategory}.`
       )
 
       setF(
@@ -1027,7 +1044,7 @@ export default function AvailabilityPage() {
       </div>
 
       <label className="mt-6 grid max-w-sm gap-1.5 text-sm">
-        Categoría que quieres configurar
+        Categoría del servicio que quieres configurar
         <select
           className="h-10 rounded-lg border bg-background px-3"
           value={selectedCategory}
@@ -1044,6 +1061,12 @@ export default function AvailabilityPage() {
           ))}
         </select>
       </label>
+
+      {!loading && providerCategories.length === 0 && (
+        <p className="mt-3 max-w-xl rounded-xl bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
+          Primero crea y activa un servicio. La agenda se configura por la categoría de ese servicio.
+        </p>
+      )}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[360px_1fr]">
 

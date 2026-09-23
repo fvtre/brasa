@@ -44,19 +44,27 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const metadataRole = data.user?.user_metadata?.role
+      const { error: ensureError } = await supabase.rpc('ensure_my_profile')
+      if (ensureError) {
+        return NextResponse.redirect(
+          `${appOrigin}/login?error=${encodeURIComponent('No se pudo preparar tu perfil de Brasa')}`
+        )
+      }
 
-      if (
-        !role &&
-        metadataRole !== 'cliente' &&
-        metadataRole !== 'prestador'
-      ) {
+      // Google no entrega el rol de Brasa. Para iniciar sesión usamos el perfil
+      // persistido; el parámetro `role` solo se aplica durante el registro.
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .maybeSingle()
+
+      if (profileError || !profile) {
         return NextResponse.redirect(
           `${appOrigin}/auth/seleccionar-rol?next=${encodeURIComponent(next)}`
         )
       }
 
-      await supabase.rpc('ensure_my_profile')
       return NextResponse.redirect(`${appOrigin}${next}`)
     }
   }
