@@ -44,8 +44,15 @@ export async function POST(request: Request) {
   )
 
   if (error) {
-    console.error('POST /api/push/subscribe:', error)
-    return NextResponse.json({ error: 'No se pudo activar el push' }, { status: 500 })
+    console.error('POST /api/push/subscribe:', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+    })
+    return NextResponse.json({
+      error: 'No se pudo activar el push',
+      code: error.code,
+    }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

@@ -9,7 +9,13 @@ function urlBase64ToUint8Array(value: string) {
   const padding = '='.repeat((4 - (value.length % 4)) % 4)
   const base64 = (value + padding).replaceAll('-', '+').replaceAll('_', '/')
   const raw = window.atob(base64)
-  return Uint8Array.from([...raw].map((character) => character.charCodeAt(0)))
+  return Uint8Array.from([...raw].map(character => character.charCodeAt(0)))
+}
+
+function keysMatch(current: ArrayBuffer | null, expected: Uint8Array<ArrayBuffer>) {
+  if (!current) return false
+  const left = new Uint8Array(current)
+  return left.length === expected.length && left.every((value, index) => value === expected[index])
 }
 
 export function PushNotificationSettings() {
@@ -30,8 +36,8 @@ export function PushNotificationSettings() {
 
     void navigator.serviceWorker
       .register('/sw.js')
-      .then((registration) => registration.pushManager.getSubscription())
-      .then(async (subscription) => {
+      .then(registration => registration.pushManager.getSubscription())
+      .then(async subscription => {
         if (!subscription || Notification.permission !== 'granted') {
           setEnabled(false)
           return
@@ -65,11 +71,18 @@ export function PushNotificationSettings() {
       if (!publicKey) throw new Error('Falta configurar la clave pública de notificaciones.')
 
       const registration = await navigator.serviceWorker.ready
+      const expectedKey = urlBase64ToUint8Array(publicKey)
+      const currentSubscription = await registration.pushManager.getSubscription()
+
+      if (currentSubscription && !keysMatch(currentSubscription.options.applicationServerKey, expectedKey)) {
+        await currentSubscription.unsubscribe()
+      }
+
       const subscription =
         (await registration.pushManager.getSubscription()) ||
         (await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(publicKey),
+          applicationServerKey: expectedKey,
         }))
 
       const response = await fetch('/api/push/subscribe', {
@@ -79,7 +92,7 @@ export function PushNotificationSettings() {
       })
 
       if (!response.ok) {
-        const result = await response.json()
+        const result = await response.json().catch(() => ({}))
         throw new Error(result.error || 'No se pudo activar el push.')
       }
 
@@ -95,20 +108,20 @@ export function PushNotificationSettings() {
   if (!supported) return null
 
   return (
-    <div className="mt-5 flex flex-col items-stretch justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center">
-      <div className="flex min-w-0 items-center gap-3">
+    <div className="mt-5 flex flex-col gap-4 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-start gap-3 sm:items-center">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
           {enabled ? <BellRing className="size-5" /> : <Bell className="size-5" />}
         </span>
-        <div>
+        <div className="min-w-0">
           <p className="font-semibold">Notificaciones de Brasa</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="break-words text-sm text-muted-foreground">
             {message || (enabled ? 'Notificaciones activadas en este dispositivo.' : 'Recibe un aviso aunque Brasa esté cerrada.')}
           </p>
         </div>
       </div>
       {!enabled && (
-        <Button type="button" size="sm" className="w-full sm:w-auto" onClick={enablePush} disabled={busy}>
+        <Button type="button" size="sm" className="w-full shrink-0 sm:w-auto" onClick={enablePush} disabled={busy}>
           {busy ? <LoaderCircle className="animate-spin" /> : <Bell />}
           Activar avisos
         </Button>

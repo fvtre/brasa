@@ -10,6 +10,15 @@ type PushPayload = {
   tag: string
 }
 
+function wait(milliseconds: number) {
+  return new Promise(resolve => setTimeout(resolve, milliseconds))
+}
+
+function shouldRetryPush(error: any) {
+  const statusCode = Number(error?.statusCode || 0)
+  return statusCode === 0 || statusCode === 408 || statusCode === 429 || statusCode >= 500
+}
+
 export async function claimPushEvent(eventKey: string, userId: string) {
   const admin = createAdminClient()
   const { error } = await admin.from('push_event_deliveries').insert({
@@ -42,16 +51,23 @@ export async function deliverPushToUser(userId: string, payload: PushPayload) {
 
   let sent = 0
   for (const subscription of subscriptions || []) {
-    try {
-      await sendWebPush(subscription, payload)
-      sent += 1
-    } catch (pushError: any) {
-      const statusCode = Number(pushError?.statusCode || 0)
-      if (statusCode === 404 || statusCode === 410) {
-        await admin.from('push_subscriptions').delete().eq('id', subscription.id)
-        continue
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        await sendWebPush(subscription, payload)
+        sent += 1
+        break
+      } catch (pushError: any) {
+        const statusCode = Number(pushError?.statusCode || 0)
+        if (statusCode === 404 || statusCode === 410) {
+          await admin.from('push_subscriptions').delete().eq('id', subscription.id)
+          break
+        }
+        if (attempt === 3 || !shouldRetryPush(pushError)) {
+          console.error('Web Push delivery:', pushError)
+          break
+        }
+        await wait(attempt * 400)
       }
-      console.error('Web Push delivery:', pushError)
     }
   }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { claimPushEvent, deliverPushToUser, releasePushEvent } from '@/lib/push-delivery'
+import { deliverEventNotification } from '@/lib/event-notifications'
 import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: Request) {
@@ -13,14 +13,13 @@ export async function POST(request: Request) {
 
   const { data: message, error } = await supabase
     .from('messages')
-    .select('id,sender_id,body,conversation:conversations!inner(id,client_id,provider_id,booking:bookings(code,event_name,contact_name),provider:service_providers!inner(owner_id,business_name))')
+    .select('id,sender_id,body,conversation:conversations!inner(id,client_id,booking:bookings(code,event_name,contact_name,contact_email),provider:service_providers!inner(owner_id,business_name))')
     .eq('id', messageId)
     .maybeSingle()
 
   const conversation = Array.isArray(message?.conversation) ? message.conversation[0] : message?.conversation
   const provider = Array.isArray(conversation?.provider) ? conversation.provider[0] : conversation?.provider
   const booking = Array.isArray(conversation?.booking) ? conversation.booking[0] : conversation?.booking
-
   if (error || !message || message.sender_id !== user.id || !conversation || !provider) {
     return NextResponse.json({ error: 'Mensaje no encontrado' }, { status: 404 })
   }
@@ -33,24 +32,15 @@ export async function POST(request: Request) {
 
   const recipientId = senderIsClient ? provider.owner_id : conversation.client_id
   const senderName = senderIsClient ? (booking?.contact_name || 'Tu cliente') : provider.business_name
-  const eventKey = `message:${message.id}:${recipientId}`
-  // El trigger messages_notify_recipient ya guardó el aviso al insertar el mensaje.
+  const result = await deliverEventNotification({
+    recipientId,
+    email: senderIsClient ? null : booking?.contact_email,
+    type: 'message',
+    title: `Nuevo mensaje de ${senderName}`,
+    body: message.body.slice(0, 160),
+    href: '/mensajes',
+    eventKey: `message:${message.id}:${recipientId}`,
+  })
 
-  if (!(await claimPushEvent(eventKey, recipientId))) {
-    return NextResponse.json({ ok: true, sent: 0, duplicate: true })
-  }
-
-  let sent = 0
-  try {
-    sent = await deliverPushToUser(recipientId, {
-      title: `Nuevo mensaje de ${senderName}`,
-      body: message.body.slice(0, 120),
-      url: '/mensajes',
-      tag: eventKey,
-    })
-  } finally {
-    if (sent === 0) await releasePushEvent(eventKey, recipientId)
-  }
-
-  return NextResponse.json({ ok: true, sent })
+  return NextResponse.json({ ok: true, ...result })
 }

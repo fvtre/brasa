@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { Bell } from 'lucide-react'
+import { Bell, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/components/auth/auth-provider'
 import { Button } from '@/components/ui/button'
@@ -94,21 +94,49 @@ export function NotificationsMenu() {
         )}
       </Button>
       {open && createPortal(
-        <div className="fixed inset-x-4 top-[calc(4rem+env(safe-area-inset-top))] z-[100] max-h-[min(70dvh,28rem)] overflow-y-auto rounded-xl border bg-popover shadow-xl sm:left-auto sm:right-4 sm:w-80">
-          <div className="border-b p-3 text-sm font-semibold">Notificaciones</div>
-          {rows.length === 0 ? (
-            <p className="p-5 text-sm text-muted-foreground">Sin notificaciones nuevas.</p>
-          ) : rows.map(notification => (
-            <Link
-              key={notification.id}
-              href={notification.href || '/cuenta'}
-              onClick={() => { void mark(notification.id) }}
-              className="block border-b p-3 hover:bg-muted"
-            >
-              <b className="text-sm">{notification.title}</b>
-              <p className="mt-1 break-words text-xs text-muted-foreground">{notification.body}</p>
-            </Link>
-          ))}
+        <div className="fixed inset-0 z-[9999]">
+          <button
+            type="button"
+            aria-label="Cerrar notificaciones"
+            className="absolute inset-0 bg-black/35 backdrop-blur-[1px]"
+            onClick={() => setOpen(false)}
+          />
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Notificaciones"
+            className="max-h-[min(75dvh,32rem)] overflow-hidden rounded-2xl border bg-popover shadow-2xl"
+            style={{
+              position: 'fixed',
+              top: 'calc(4.5rem + env(safe-area-inset-top))',
+              right: 'max(0.75rem, env(safe-area-inset-right))',
+              left: 'auto',
+              width: 'min(24rem, calc(100vw - 1.5rem))',
+              zIndex: 2147483647,
+            }}
+          >
+            <div className="flex items-center justify-between border-b p-3">
+              <span className="text-sm font-semibold">Notificaciones</span>
+              <Button size="icon" variant="ghost" onClick={() => setOpen(false)} aria-label="Cerrar">
+                <X className="size-4" />
+              </Button>
+            </div>
+            <div className="max-h-[calc(min(75dvh,32rem)-3.5rem)] overflow-y-auto overscroll-contain">
+              {rows.length === 0 ? (
+                <p className="p-5 text-sm text-muted-foreground">Sin notificaciones nuevas.</p>
+              ) : rows.map(notification => (
+                <Link
+                  key={notification.id}
+                  href={notification.href || '/cuenta'}
+                  onClick={() => { void mark(notification.id) }}
+                  className="block border-b p-3 hover:bg-muted"
+                >
+                  <b className="text-sm">{notification.title}</b>
+                  <p className="mt-1 break-words text-xs text-muted-foreground">{notification.body}</p>
+                </Link>
+              ))}
+            </div>
+          </section>
         </div>,
         document.body,
       )}

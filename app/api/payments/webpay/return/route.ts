@@ -56,7 +56,14 @@ async function handleReturn(request: Request) {
     .eq('token', token)
     .maybeSingle()
   if (!payment) return NextResponse.redirect(`${appUrl}/mis-reservas?payment=invalid`, 303)
-  if (['pagado', 'autorizado'].includes(payment.status)) return returnForPayment(token, 'success')
+  if (['pagado', 'autorizado'].includes(payment.status)) {
+    try {
+      await notifyPaymentConfirmed(payment.id, payment.booking_id)
+    } catch (notificationError) {
+      console.error('Payment confirmation retry:', notificationError)
+    }
+    return returnForPayment(token, 'success')
+  }
 
   try {
     const response = await getWebpayTransaction().commit(token)

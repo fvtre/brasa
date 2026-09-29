@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { claimPushEvent, deliverPushToUser, releasePushEvent } from '@/lib/push-delivery'
+import { deliverEventNotification } from '@/lib/event-notifications'
 import { createClient } from '@/lib/supabase/server'
 
 type Action = 'accept' | 'reject'
@@ -17,14 +17,13 @@ export async function POST(request: Request) {
 
   const { data: item, error } = await supabase
     .from('booking_items')
-    .select('id,provider_status,provider_name,service_name,booking:bookings!inner(id,client_id,code,event_name),provider:service_providers!inner(owner_id)')
+    .select('id,provider_status,provider_name,service_name,booking:bookings!inner(id,client_id,code,event_name,contact_email),provider:service_providers!inner(owner_id)')
     .eq('id', itemId)
     .maybeSingle()
 
   const booking = Array.isArray(item?.booking) ? item.booking[0] : item?.booking
   const provider = Array.isArray(item?.provider) ? item.provider[0] : item?.provider
   const expectedStatus = action === 'accept' ? 'confirmada' : 'rechazada'
-
   if (error || !item || !booking || !provider || provider.owner_id !== user.id) {
     return NextResponse.json({ error: 'Solicitud no encontrada' }, { status: 404 })
   }
@@ -32,27 +31,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'El estado de la solicitud no coincide' }, { status: 409 })
   }
 
-  const eventKey = `booking-item:${item.id}:${expectedStatus}`
   const accepted = action === 'accept'
-  const title = accepted ? 'Solicitud aceptada' : 'Solicitud rechazada'
-  const body = `${item.provider_name} ${accepted ? 'aceptó' : 'rechazó'} ${item.service_name} para ${booking.event_name}.`
-  // El trigger booking_item_status_notification ya guarda el aviso en la bandeja.
+  const result = await deliverEventNotification({
+    recipientId: booking.client_id,
+    email: booking.contact_email,
+    type: 'booking_status',
+    title: accepted ? 'Solicitud aceptada' : 'Solicitud rechazada',
+    body: `${item.provider_name} ${accepted ? 'aceptó' : 'rechazó'} ${item.service_name} para ${booking.event_name}.`,
+    href: `/mis-reservas/${booking.code}`,
+    eventKey: `booking-status:${item.id}:${expectedStatus}:${booking.client_id}`,
+  })
 
-  if (!(await claimPushEvent(eventKey, booking.client_id))) {
-    return NextResponse.json({ ok: true, sent: 0, duplicate: true })
-  }
-
-  let sent = 0
-  try {
-    sent = await deliverPushToUser(booking.client_id, {
-      title,
-      body,
-      url: `/mis-reservas/${booking.code}`,
-      tag: eventKey,
-    })
-  } finally {
-    if (sent === 0) await releasePushEvent(eventKey, booking.client_id)
-  }
-
-  return NextResponse.json({ ok: true, sent })
+  return NextResponse.json({ ok: true, ...result })
 }
