@@ -28,6 +28,11 @@ export default function MessagesPage() {
   const [text, setText] = React.useState('')
   const [sending, setSending] = React.useState(false)
   const [error, setError] = React.useState('')
+  const [requestedBooking, setRequestedBooking] = React.useState('')
+
+  React.useEffect(() => {
+    setRequestedBooking(new URLSearchParams(window.location.search).get('booking') || '')
+  }, [])
 
   const loadConversations = React.useCallback(async () => {
     if (!user) return
@@ -39,8 +44,14 @@ export default function MessagesPage() {
       provider: Array.isArray(row.provider) ? row.provider[0] || null : row.provider,
     })) as Conversation[]
     setConversations(rows)
-    setSelected(current => current && rows.some(row => row.id === current) ? current : rows[0]?.id || '')
-  }, [supabase, user])
+    setSelected(current => {
+      const requested = requestedBooking
+        ? rows.find(row => row.booking_id === requestedBooking)
+        : null
+      if (requested) return requested.id
+      return current && rows.some(row => row.id === current) ? current : rows[0]?.id || ''
+    })
+  }, [requestedBooking, supabase, user])
 
   const loadMessages = React.useCallback(async () => {
     if (!selected) return setMessages([])

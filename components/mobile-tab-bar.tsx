@@ -61,6 +61,7 @@ export function MobileTabBar() {
                     badge: selections.length,
                   },
                   { href: '/mis-reservas', label: 'Reservas', icon: CalendarDays },
+                  { href: '/mensajes', label: 'Chat', icon: MessageCircle },
                 ]
               : [{ href: '/proveedores', label: 'Buscar', icon: Search }]),
             { href: user ? '/cuenta' : '/login', label: user ? 'Cuenta' : 'Entrar', icon: UserRound },
@@ -71,7 +72,10 @@ export function MobileTabBar() {
       aria-label="Navegación principal móvil"
       className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur md:hidden"
     >
-      <div className="mx-auto flex max-w-lg items-start justify-around">
+      <div
+        className="mx-auto grid max-w-lg items-start"
+        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+      >
         {tabs.map((tab) => {
           const tabPath = tab.href.split('#')[0]
           const active =
@@ -86,7 +90,7 @@ export function MobileTabBar() {
               href={tab.href}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'relative flex min-w-14 flex-1 flex-col items-center gap-1 rounded-xl px-1 py-1 text-[10px] font-medium transition-colors',
+                'relative flex min-w-0 flex-col items-center gap-1 rounded-xl px-0.5 py-1 text-[9px] font-medium transition-colors min-[390px]:text-[10px]',
                 active ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
               )}
             >

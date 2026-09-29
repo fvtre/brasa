@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Clock3,
   MapPin,
+  MessageCircle,
   PartyPopper,
   Users,
 } from 'lucide-react'
@@ -16,6 +17,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getCategory } from '@/lib/catalog'
 import { bookingStatusClasses, bookingStatusLabel } from '@/lib/booking-status'
 import { WebpayPaymentButton } from '@/components/webpay-payment-button'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -215,9 +218,18 @@ export default async function BookingDetailPage({
             <div className="flex justify-between gap-4 border-t pt-2 font-bold"><dt>Total</dt><dd>{formatCLP(booking.total)}</dd></div>
           </dl>
           {isPaid && (
-            <p className="mt-4 rounded-lg bg-emerald-500/10 p-3 text-center text-sm font-semibold text-emerald-700">
-              Pago realizado
-            </p>
+            <div className="mt-4 space-y-3">
+              <p className="rounded-lg bg-emerald-500/10 p-3 text-center text-sm font-semibold text-emerald-700">
+                Pago realizado
+              </p>
+              <Link
+                href={`/mensajes?booking=${encodeURIComponent(booking.id)}`}
+                className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'w-full')}
+              >
+                <MessageCircle />
+                Chatear con prestador
+              </Link>
+            </div>
           )}
           {canPay && (
             <WebpayPaymentButton
