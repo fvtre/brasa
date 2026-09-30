@@ -75,19 +75,23 @@ export async function deliverEventNotification(event: EventNotification) {
   let emailSent = false
   if (email && notification && !notification.email_sent_at) {
     const detailUrl = `${getPublicAppUrl()}${event.href}`
+    const logoUrl = `${getPublicAppUrl()}/icon.svg`
+    const badge = event.type === 'booking_created' || event.type === 'booking_request'
+      ? 'Nueva solicitud'
+      : event.type === 'message_created'
+        ? 'Nuevo mensaje'
+        : 'Reserva actualizada'
+    const actionText = event.type === 'message_created' ? 'Abrir conversación' : 'Ver en Brasa'
     try {
       const result = await sendTransactionalEmail({
         to: email,
         subject: `${event.title} · Brasa`,
         idempotencyKey: event.eventKey,
+        useTemplate: false,
         text: `${event.title}\n\n${event.body}\n\n${detailUrl}`,
         templateVariables: {
           PREVIEW: event.body,
-          BADGE: event.type === 'booking_created'
-            ? 'Nueva solicitud'
-            : event.type === 'message_created'
-              ? 'Nuevo mensaje'
-              : 'Reserva actualizada',
+          BADGE: badge,
           TITLE: event.title,
           MESSAGE: event.body,
           EVENT_NAME: event.body.split(':')[0] || 'Mi evento',
@@ -95,15 +99,9 @@ export async function deliverEventNotification(event: EventNotification) {
             ? 'Revisa la solicitud y responde antes de que venza el plazo.'
             : 'Ingresa a Brasa para revisar la información completa.',
           ACTION_URL: detailUrl,
-          ACTION_TEXT: event.type === 'message_created' ? 'Abrir conversación' : 'Ver en Brasa',
+          ACTION_TEXT: actionText,
         },
-        html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#211714">
-          <div style="font-size:24px;font-weight:700;color:#ea580c">Brasa</div>
-          <h1 style="font-size:25px">${escapeHtml(event.title)}</h1>
-          <p style="font-size:16px;line-height:1.55">${escapeHtml(event.body)}</p>
-          <a href="${escapeHtml(detailUrl)}" style="display:inline-block;margin-top:12px;background:#ea580c;color:white;text-decoration:none;border-radius:10px;padding:12px 18px">Ver en Brasa</a>
-          <p style="margin-top:24px;color:#786b66;font-size:13px">Este correo fue enviado automáticamente por Brasa.</p>
-        </div>`,
+        html: `<!doctype html><html lang="es"><body style="margin:0;background:#f7f2ef"><div style="display:none;max-height:0;overflow:hidden;color:transparent">${escapeHtml(event.body)}</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;background:#f7f2ef"><tr><td align="center" style="padding:32px 12px"><table role="presentation" width="600" cellspacing="0" cellpadding="0" style="width:100%;max-width:600px;background:#ffffff;border:1px solid #eaded8;border-radius:24px;overflow:hidden"><tr><td style="padding:24px 32px;background:#1c1715"><table role="presentation" cellspacing="0" cellpadding="0"><tr><td width="48"><img src="${escapeHtml(logoUrl)}" width="44" height="44" alt="Brasa" style="display:block;border:0;border-radius:14px"></td><td style="padding-left:12px;color:#fff;font-family:Arial,sans-serif;font-size:24px;font-weight:800">Brasa</td></tr></table></td></tr><tr><td style="padding:32px;font-family:Arial,sans-serif;color:#211714"><span style="display:inline-block;padding:7px 12px;border-radius:999px;background:#fff0e8;color:#d94b0b;font-size:13px;font-weight:700">${escapeHtml(badge)}</span><h1 style="margin:18px 0 12px;font-size:28px;line-height:1.2;color:#211714">${escapeHtml(event.title)}</h1><p style="margin:0;font-size:16px;line-height:1.65;color:#514743">${escapeHtml(event.body)}</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;margin:24px 0;border:1px solid #eaded8;border-radius:16px;background:#fcfaf9"><tr><td style="padding:18px 20px"><div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#d94b0b">Detalle</div><div style="margin-top:8px;font-size:15px;line-height:1.6;color:#514743">${escapeHtml(event.body)}</div></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0"><tr><td bgcolor="#f05a22" style="border-radius:12px"><a href="${escapeHtml(detailUrl)}" style="display:inline-block;padding:14px 22px;color:#fff;text-decoration:none;font-size:16px;font-weight:700">${escapeHtml(actionText)}</a></td></tr></table><p style="margin:30px 0 0;font-size:13px;line-height:1.5;color:#8b7f79">Este correo fue enviado automáticamente por Brasa. Revisa siempre los detalles dentro de la aplicación.</p></td></tr><tr><td style="padding:20px 32px;border-top:1px solid #eaded8;background:#fcfaf9;font-family:Arial,sans-serif;font-size:12px;color:#8b7f79;text-align:center">Brasa · Tu evento completo en un solo lugar</td></tr></table></td></tr></table></body></html>`,
       })
       emailSent = result.sent
       if (emailSent) {
