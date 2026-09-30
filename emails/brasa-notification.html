@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{{{SUBJECT}}}</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f7f2ef">
+    <div style="display:none;max-height:0;overflow:hidden;color:transparent">
+      {{{PREVIEW}}}
+    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;background:#f7f2ef">
+      <tr>
+        <td align="center" style="padding:32px 12px">
+          <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="width:100%;max-width:600px;background:#ffffff;border:1px solid #eaded8;border-radius:24px;overflow:hidden">
+            <tr>
+              <td style="padding:24px 32px;background:#1c1715">
+                <table role="presentation" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td width="48" valign="middle">
+                      <img src="{{{LOGO_URL}}}" width="44" height="44" alt="Brasa" style="display:block;width:44px;height:44px;border:0;border-radius:14px" />
+                    </td>
+                    <td valign="middle" style="padding-left:12px;color:#ffffff;font-family:Arial,sans-serif;font-size:24px;font-weight:800">Brasa</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;font-family:Arial,sans-serif;color:#211714">
+                <span style="display:inline-block;padding:7px 12px;border-radius:999px;background:#fff0e8;color:#ea580c;font-size:13px;font-weight:700">{{{BADGE}}}</span>
+                <h1 style="margin:18px 0 12px;font-size:28px;line-height:1.2;color:#211714">{{{TITLE}}}</h1>
+                <p style="margin:0 0 12px;font-size:16px;line-height:1.6">Hola, {{{USER_NAME}}}.</p>
+                <p style="margin:0;font-size:16px;line-height:1.65;color:#514743">{{{MESSAGE}}}</p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;margin:24px 0;border:1px solid #eaded8;border-radius:16px;background:#fcfaf9">
+                  <tr>
+                    <td style="padding:20px">
+                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                        <tr><td style="padding:7px 0;color:#786b66">Evento</td><td style="padding:7px 0;text-align:right;font-weight:700;color:#211714">{{{EVENT_NAME}}}</td></tr>
+                        <tr><td style="padding:7px 0;color:#786b66">Reserva</td><td style="padding:7px 0;text-align:right;font-weight:700;color:#211714">{{{BOOKING_CODE}}}</td></tr>
+                        <tr><td style="padding:7px 0;color:#786b66">Fecha</td><td style="padding:7px 0;text-align:right;color:#211714">{{{EVENT_DATE}}}</td></tr>
+                        <tr><td style="padding:7px 0;color:#786b66">Hora</td><td style="padding:7px 0;text-align:right;color:#211714">{{{EVENT_TIME}}}</td></tr>
+                        <tr><td style="padding:7px 0;color:#786b66">Comuna</td><td style="padding:7px 0;text-align:right;color:#211714">{{{COMUNA}}}</td></tr>
+                        <tr style="display:{{{VOUCHER_DISPLAY}}}"><td colspan="2" style="padding:14px 0 8px;border-top:1px solid #eaded8;color:#211714;font-weight:700">Detalle del pago</td></tr>
+                        <tr style="display:{{{VOUCHER_DISPLAY}}}"><td colspan="2" style="padding:0 0 12px;color:#514743;font-size:14px;line-height:1.65">{{{ITEMS_HTML}}}</td></tr>
+                        <tr style="display:{{{VOUCHER_DISPLAY}}}"><td style="padding:13px 0 0;color:#786b66;border-top:1px solid #eaded8">Total</td><td style="padding:13px 0 0;text-align:right;font-size:20px;font-weight:800;color:#211714;border-top:1px solid #eaded8">{{{AMOUNT}}}</td></tr>
+                        <tr style="display:{{{VOUCHER_DISPLAY}}}"><td style="padding:7px 0;color:#786b66">Referencia de pago</td><td style="padding:7px 0;text-align:right;color:#211714">{{{PAYMENT_REFERENCE}}}</td></tr>
+                        <tr style="display:{{{VOUCHER_DISPLAY}}}"><td style="padding:7px 0;color:#786b66">Fecha de pago</td><td style="padding:7px 0;text-align:right;color:#211714">{{{PAYMENT_DATE}}}</td></tr>
+                        <tr style="display:{{{VOUCHER_DISPLAY}}}"><td style="padding:7px 0;color:#786b66">Monto neto prestador</td><td style="padding:7px 0;text-align:right;font-weight:700;color:#087a5b">{{{PROVIDER_NET}}}</td></tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+                <div style="margin:20px 0;padding:16px;border-radius:14px;background:#fff0e8;color:#b54708;font-size:14px;line-height:1.55">{{{DETAIL}}}</div>
+                <table role="presentation" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td align="center" bgcolor="#f05a22" style="border-radius:12px">
+                      <a href="{{{ACTION_URL}}}" style="display:inline-block;padding:14px 22px;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700">{{{ACTION_TEXT}}}</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:30px 0 0;font-size:13px;line-height:1.5;color:#8b7f79">Este correo fue enviado automáticamente por Brasa. No compartas información sensible ni códigos de pago por canales externos.</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px;border-top:1px solid #eaded8;background:#fcfaf9;font-family:Arial,sans-serif;font-size:12px;color:#8b7f79;text-align:center">Brasa · Tu evento completo en un solo lugar</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

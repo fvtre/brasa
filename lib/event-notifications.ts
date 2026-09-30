@@ -81,6 +81,22 @@ export async function deliverEventNotification(event: EventNotification) {
         subject: `${event.title} · Brasa`,
         idempotencyKey: event.eventKey,
         text: `${event.title}\n\n${event.body}\n\n${detailUrl}`,
+        templateVariables: {
+          PREVIEW: event.body,
+          BADGE: event.type === 'booking_created'
+            ? 'Nueva solicitud'
+            : event.type === 'message_created'
+              ? 'Nuevo mensaje'
+              : 'Reserva actualizada',
+          TITLE: event.title,
+          MESSAGE: event.body,
+          EVENT_NAME: event.body.split(':')[0] || 'Mi evento',
+          DETAIL: event.type === 'booking_created'
+            ? 'Revisa la solicitud y responde antes de que venza el plazo.'
+            : 'Ingresa a Brasa para revisar la información completa.',
+          ACTION_URL: detailUrl,
+          ACTION_TEXT: event.type === 'message_created' ? 'Abrir conversación' : 'Ver en Brasa',
+        },
         html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#211714">
           <div style="font-size:24px;font-weight:700;color:#ea580c">Brasa</div>
           <h1 style="font-size:25px">${escapeHtml(event.title)}</h1>
@@ -107,4 +123,39 @@ export async function deliverEventNotification(event: EventNotification) {
   }
 
   return { emailSent, pushSent }
+}
+
+export async function deliverPendingEventNotifications(limit = 50) {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('notifications')
+    .select('user_id,type,title,body,href,dedupe_key,email_attempts')
+    .not('dedupe_key', 'is', null)
+    .is('email_sent_at', null)
+    .lt('email_attempts', 3)
+    .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    .order('created_at', { ascending: true })
+    .limit(Math.max(1, Math.min(limit, 100)))
+
+  if (error) throw error
+
+  let processed = 0
+  let emailsSent = 0
+  let pushesSent = 0
+  for (const notification of data || []) {
+    if (!notification.dedupe_key) continue
+    const result = await deliverEventNotification({
+      recipientId: notification.user_id,
+      type: notification.type,
+      title: notification.title,
+      body: notification.body || '',
+      href: notification.href || '/',
+      eventKey: notification.dedupe_key,
+    })
+    processed += 1
+    emailsSent += Number(result.emailSent)
+    pushesSent += result.pushSent
+  }
+
+  return { processed, emailsSent, pushesSent }
 }

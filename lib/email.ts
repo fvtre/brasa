@@ -4,8 +4,10 @@ type TransactionalEmail = {
   html: string
   idempotencyKey: string
   subject: string
+  templateVariables?: Record<string, string | number>
   text: string
   to: string
+  useTemplate?: boolean
 }
 
 function wait(milliseconds: number) {
@@ -25,6 +27,7 @@ export function getPublicAppUrl() {
 export async function sendTransactionalEmail(message: TransactionalEmail) {
   const apiKey = process.env.RESEND_API_KEY
   const from = process.env.RESEND_FROM_EMAIL
+  const templateId = process.env.RESEND_TEMPLATE_ID
 
   if (!apiKey || !from) {
     console.warn('Correo omitido: configura RESEND_API_KEY y RESEND_FROM_EMAIL.')
@@ -45,8 +48,37 @@ export async function sendTransactionalEmail(message: TransactionalEmail) {
           from,
           to: [message.to],
           subject: message.subject,
-          html: message.html,
-          text: message.text,
+          ...(templateId && message.useTemplate !== false
+            ? {
+                template: {
+                  id: templateId,
+                  variables: {
+                    SUBJECT: message.subject,
+                    PREVIEW: message.text.split('\n').find(Boolean) || message.subject,
+                    LOGO_URL: `${getPublicAppUrl()}/icon.svg`,
+                    BADGE: 'Actualización',
+                    TITLE: message.subject.replace(/ · Brasa$/, ''),
+                    USER_NAME: 'usuario',
+                    MESSAGE: message.text.split('\n').filter(Boolean)[1] || message.text,
+                    EVENT_NAME: 'Mi evento',
+                    BOOKING_CODE: '—',
+                    EVENT_DATE: '—',
+                    EVENT_TIME: '—',
+                    COMUNA: '—',
+                    AMOUNT: '—',
+                    VOUCHER_DISPLAY: 'none',
+                    ITEMS_HTML: 'Consulta el detalle completo en Brasa.',
+                    PAYMENT_REFERENCE: '—',
+                    PAYMENT_DATE: '—',
+                    PROVIDER_NET: '—',
+                    DETAIL: 'Ingresa a Brasa para revisar todos los detalles.',
+                    ACTION_URL: getPublicAppUrl(),
+                    ACTION_TEXT: 'Ver en Brasa',
+                    ...message.templateVariables,
+                  },
+                },
+              }
+            : { html: message.html, text: message.text }),
         }),
       })
 
