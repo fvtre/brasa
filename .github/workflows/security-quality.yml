@@ -18,7 +18,7 @@ jobs:
   verify:
     name: Compilar y auditar
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       NEXT_TELEMETRY_DISABLED: '1'
       NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
@@ -34,7 +34,7 @@ jobs:
           cache: npm
 
       - name: Instalar dependencias bloqueadas
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Auditar dependencias de producción
         run: npm run security:audit
