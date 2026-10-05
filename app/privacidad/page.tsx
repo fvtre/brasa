@@ -1,83 +1,109 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Política de privacidad | Brasa',
-  description: 'Información sobre el tratamiento de datos personales en Brasa.',
+  description: 'Cómo Brasa recopila, utiliza, protege y elimina datos personales.',
 }
+
+const contactEmail = 'privacidad@brasa.cl'
 
 export default function PrivacyPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-12">
-      <p className="text-sm font-semibold text-primary">Brasa</p>
-      <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Política de privacidad</h1>
-      <p className="mt-3 text-sm text-muted-foreground">Última actualización: 31 de agosto de 2026</p>
+    <main className="mx-auto max-w-3xl px-4 py-12">
+      <p className="text-sm font-semibold text-primary">Privacidad y protección de datos</p>
+      <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Política de privacidad de Brasa</h1>
+      <p className="mt-3 text-sm text-muted-foreground">Versión 2.0 · Última actualización: 5 de octubre de 2026</p>
 
-      <div className="mt-8 space-y-7 text-sm leading-7 text-muted-foreground">
+      <div className="mt-8 rounded-2xl border border-primary/20 bg-primary/5 p-5 text-sm leading-6">
+        Brasa trata únicamente los datos necesarios para conectar clientes y prestadores,
+        gestionar reservas, pagos, comunicaciones y seguridad. No vendemos datos personales.
+      </div>
+
+      <div className="mt-8 space-y-8 text-sm leading-7 text-muted-foreground">
         <section>
-          <h2 className="text-lg font-bold text-foreground">1. Información que recopilamos</h2>
+          <h2 className="text-lg font-bold text-foreground">1. Responsable y contacto</h2>
           <p className="mt-2">
-            Brasa puede recopilar datos de identificación y contacto, información del perfil,
-            datos necesarios para organizar y prestar servicios de eventos, antecedentes de
-            reservas y pagos, comunicaciones con la plataforma e información técnica básica
-            necesaria para seguridad y funcionamiento.
-          </p>
-          <p className="mt-2">
-            Si utilizas Google o Facebook para ingresar, recibimos únicamente la información
-            autorizada por ti y necesaria para crear o identificar tu cuenta, como nombre,
-            correo electrónico, identificador del proveedor y fotografía de perfil cuando esté
-            disponible.
+            Brasa es responsable del tratamiento realizado dentro de la plataforma. Para consultas,
+            ejercicio de derechos o reportes de privacidad puedes escribir a{' '}
+            <a className="font-medium text-primary hover:underline" href={`mailto:${contactEmail}`}>{contactEmail}</a>.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-foreground">2. Cómo usamos la información</h2>
+          <h2 className="text-lg font-bold text-foreground">2. Datos que tratamos</h2>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>Identificación y contacto: nombre, correo, teléfono, fotografía y comuna.</li>
+            <li>Datos de clientes: dirección del evento, fecha, invitados, presupuesto y solicitudes.</li>
+            <li>Datos de prestadores: perfil comercial, servicios, cobertura, agenda y cuenta para liquidaciones.</li>
+            <li>Datos operacionales: reservas, pagos, comprobantes, mensajes, notificaciones y soporte.</li>
+            <li>Datos técnicos: sesión, dispositivo, registros de seguridad y datos necesarios para prevenir fraude.</li>
+          </ul>
+          <p className="mt-2">Brasa no almacena números completos de tarjetas; el pago es procesado por Webpay/Transbank.</p>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-bold text-foreground">3. Finalidades y fundamento</h2>
           <p className="mt-2">
-            Usamos estos datos para administrar cuentas, conectar clientes con prestadores,
-            procesar solicitudes y reservas, facilitar pagos, prevenir fraude, prestar soporte,
-            mejorar Brasa y cumplir obligaciones legales. No vendemos datos personales.
+            Utilizamos la información para crear y proteger cuentas, ejecutar reservas y pagos,
+            conectar a las partes, habilitar mensajería, liquidar a prestadores, prevenir fraude,
+            responder solicitudes y cumplir obligaciones legales. El tratamiento se basa, según
+            corresponda, en la ejecución del servicio solicitado, el consentimiento, obligaciones
+            legales y el interés legítimo de mantener la plataforma segura.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-foreground">3. Proveedores y comunicación de datos</h2>
+          <h2 className="text-lg font-bold text-foreground">4. Destinatarios y servicios externos</h2>
           <p className="mt-2">
-            Podemos utilizar proveedores de infraestructura, autenticación, almacenamiento,
-            pagos, analítica y soporte que tratan información solo para prestar sus servicios.
-            También compartimos los datos necesarios entre clientes y prestadores cuando existe
-            una solicitud o reserva, por ejemplo los datos del evento y de contacto.
+            Compartimos solo los datos necesarios entre cliente y prestador cuando existe una reserva.
+            También utilizamos proveedores de infraestructura, autenticación, alojamiento, correo,
+            notificaciones, analítica y pagos, incluyendo Supabase, Vercel, Resend, Google, Meta y
+            Transbank. Algunos pueden tratar datos fuera de Chile bajo sus términos y medidas contractuales.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-foreground">4. Conservación y seguridad</h2>
+          <h2 className="text-lg font-bold text-foreground">5. Conservación</h2>
           <p className="mt-2">
-            Conservamos la información mientras la cuenta esté activa y durante el plazo
-            necesario para atender reservas, reclamos, prevención de fraude y obligaciones
-            contables o legales. Aplicamos medidas razonables para proteger la información,
-            aunque ningún sistema conectado a internet ofrece seguridad absoluta.
+            Conservamos los datos de cuenta mientras permanezca activa. Reservas, pagos, liquidaciones
+            y comprobantes se mantienen durante el plazo necesario para cumplir obligaciones legales,
+            contables, tributarias, prevenir fraude y atender reclamos. Mensajes y registros técnicos
+            se conservan solo mientras sean necesarios para la operación, seguridad o resolución de
+            controversias. Cumplido el propósito, los datos se eliminan o anonimizan de forma segura.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-foreground">5. Tus derechos y eliminación</h2>
+          <h2 className="text-lg font-bold text-foreground">6. Tus derechos</h2>
           <p className="mt-2">
-            Puedes solicitar acceso, corrección o eliminación de tus datos. Las instrucciones
-            para eliminar una cuenta están disponibles en la página de eliminación de datos.
-            Cierta información puede conservarse cuando sea necesaria para cumplir obligaciones
-            legales o resolver operaciones pendientes.
+            Puedes solicitar información y acceso a tus datos, rectificación, supresión, oposición,
+            bloqueo y portabilidad cuando corresponda. También puedes retirar un consentimiento sin
+            afectar tratamientos previos lícitos. Verificaremos razonablemente tu identidad antes de responder.
+          </p>
+          <Link className="mt-3 inline-flex font-semibold text-primary hover:underline" href="/eliminacion-de-datos">
+            Solicitar acceso, portabilidad o eliminación →
+          </Link>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-bold text-foreground">7. Seguridad e incidentes</h2>
+          <p className="mt-2">
+            Aplicamos control de acceso por roles, cifrado en tránsito, aislamiento de información,
+            registro de eventos, copias de seguridad administradas y revisión de vulnerabilidades.
+            Si ocurre un incidente que pueda afectar tus derechos, aplicaremos el procedimiento de
+            contención, evaluación y comunicación exigido por la normativa aplicable.
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-foreground">6. Contacto</h2>
+          <h2 className="text-lg font-bold text-foreground">8. Cambios a esta política</h2>
           <p className="mt-2">
-            Para consultas sobre privacidad, escribe a{' '}
-            <a className="font-medium text-primary hover:underline" href="mailto:adrianoduque3@gmail.com">
-              adrianoduque3@gmail.com
-            </a>.
+            Publicaremos la versión vigente y su fecha. Cuando un cambio sea sustancial, lo comunicaremos
+            dentro de Brasa o por los datos de contacto registrados.
           </p>
         </section>
       </div>
-    </div>
+    </main>
   )
 }

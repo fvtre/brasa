@@ -136,7 +136,7 @@ export function SiteHeader() {
             ? '/admin/dashboard'
             : role === 'prestador'
                 ? '/prestador/dashboard'
-                : '/cliente/dashboard'
+                : '/cliente/perfil'
 
     const navItems =
         !user
@@ -265,7 +265,7 @@ export function SiteHeader() {
                                             ? 'Mi negocio'
                                             : role === 'administrador'
                                                 ? 'Admin'
-                                                : 'Mi cuenta'}
+                                                : 'Mi perfil'}
                                     </span>
                                 </Button>
 

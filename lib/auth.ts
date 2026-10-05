@@ -63,5 +63,5 @@ export async function requireRole(roles: AppRole[]) {
 export function roleHome(role: AppRole) {
   if (role === 'administrador') return '/admin/dashboard'
   if (role === 'prestador') return '/prestador/dashboard'
-  return '/cliente/dashboard'
+  return '/cliente/perfil'
 }

@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   ListChecks,
   MessageCircle,
+  Package,
   Search,
   ShoppingBag,
   UserRound,
@@ -36,7 +37,7 @@ export function MobileTabBar() {
     profile?.role === 'prestador'
       ? [
           { href: '/prestador/dashboard#solicitudes', label: 'Solicitudes', icon: ListChecks },
-          { href: '/prestador/servicios', label: 'Servicios', icon: Wrench },
+          { href: '/prestador/servicios', label: 'Servicios', icon: Package },
           { href: '/prestador/disponibilidad', label: 'Agenda', icon: CalendarDays },
           { href: '/mensajes', label: 'Mensajes', icon: MessageCircle },
           { href: '/prestador/perfil', label: 'Perfil', icon: UserRound },
@@ -64,7 +65,7 @@ export function MobileTabBar() {
                   { href: '/mensajes', label: 'Chat', icon: MessageCircle },
                 ]
               : [{ href: '/proveedores', label: 'Buscar', icon: Search }]),
-            { href: user ? '/cuenta' : '/login', label: user ? 'Cuenta' : 'Entrar', icon: UserRound },
+            { href: user ? '/cliente/perfil' : '/login', label: user ? 'Perfil' : 'Entrar', icon: UserRound },
           ]
 
   return (

@@ -18,6 +18,11 @@ export default function RegisterPage() {
   const [busy, setBusy] = React.useState(false)
   const [message, setMessage] = React.useState('')
   const [error, setError] = React.useState('')
+  const passwordIsStrong =
+    form.password.length >= 10 &&
+    /[a-z]/.test(form.password) &&
+    /[A-Z]/.test(form.password) &&
+    /\d/.test(form.password)
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -26,6 +31,12 @@ export default function RegisterPage() {
     setBusy(true)
     setError('')
     setMessage('')
+
+    if (!passwordIsStrong) {
+      setError('Usa al menos 10 caracteres, con mayúscula, minúscula y número.')
+      setBusy(false)
+      return
+    }
 
     try {
       const redirectTo = `${window.location.origin}/auth/callback?next=/cuenta`
@@ -141,12 +152,15 @@ export default function RegisterPage() {
               <Input
                 type="password"
                 autoComplete="new-password"
-                minLength={6}
+                minLength={10}
                 required
                 disabled={busy}
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
+              <span className="text-xs text-muted-foreground">
+                Mínimo 10 caracteres, con mayúscula, minúscula y número.
+              </span>
             </label>
 
             {error && (
@@ -158,7 +172,7 @@ export default function RegisterPage() {
 
             <button
               type="submit"
-              disabled={busy || !form.name.trim() || !form.email.trim() || form.password.length < 6}
+              disabled={busy || !form.name.trim() || !form.email.trim() || !passwordIsStrong}
               className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:pointer-events-none disabled:opacity-50"
             >
               {busy ? (

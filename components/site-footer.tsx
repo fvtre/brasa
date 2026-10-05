@@ -39,6 +39,7 @@ export function SiteFooter() {
           <h3 className="mb-3 text-sm font-semibold">Brasa</h3>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li><Link href="/privacidad" className="hover:text-foreground">Política de privacidad</Link></li>
+            <li><Link href="/seguridad" className="hover:text-foreground">Seguridad y confianza</Link></li>
             <li><Link href="/eliminacion-de-datos" className="hover:text-foreground">Eliminación de datos</Link></li>
           </ul>
         </div>
