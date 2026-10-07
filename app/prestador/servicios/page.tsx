@@ -1300,53 +1300,48 @@ export default function ProviderServicesPage() {
                   </span>
                 </label>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="grid gap-1.5 text-sm">
-                    {f.scheduleMode === 'delivery_pickup'
-                      ? 'Duración del arriendo / evento'
-                      : 'Duración base'}
+                <div className="grid grid-cols-2 items-start gap-3">
+  <label className="grid gap-1.5 text-sm">
+    {f.scheduleMode === 'delivery_pickup'
+      ? 'Duración del arriendo / evento'
+      : 'Duración base'}
 
-                    <Input
-                      type="number"
-                      min={0.5}
-                      step={0.5}
-                      required
-                      value={f.durationHours}
-                      onChange={(e) =>
-                        setF({
-                          ...f,
-                          durationHours: Number(
-                            e.target.value
-                          ),
-                        })
-                      }
-                    />
-                  </label>
+    <Input
+      type="number"
+      min={0.5}
+      step={0.5}
+      required
+      value={f.durationHours}
+      onChange={(e) =>
+        setF({
+          ...f,
+          durationHours: Number(e.target.value),
+        })
+      }
+    />
+  </label>
 
-                  <label className="grid gap-1.5 text-sm">
-                    Hora adicional
+  <label className="grid gap-1.5 text-sm">
+    Hora adicional
 
-                    <Input
-                      type="number"
-                      min={0}
-                      step={1000}
-                      value={f.extraHourPrice}
-                      onChange={(e) =>
-                        setF({
-                          ...f,
-                          extraHourPrice: Number(
-                            e.target.value
-                          ),
-                        })
-                      }
-                    />
+    <Input
+      type="number"
+      min={0}
+      step={1000}
+      value={f.extraHourPrice}
+      onChange={(e) =>
+        setF({
+          ...f,
+          extraHourPrice: Number(e.target.value),
+        })
+      }
+    />
 
-                    <span className="text-[11px] text-muted-foreground">
-                      Solo si el cliente solicita tiempo extra.
-                    </span>
-                  </label>
-                </div>
-
+    <span className="text-[11px] text-muted-foreground">
+      Solo si el cliente solicita tiempo extra.
+    </span>
+  </label>
+</div>
                 <ToggleRow
                   checked={f.durationByGuests}
                   onChange={(checked) =>
