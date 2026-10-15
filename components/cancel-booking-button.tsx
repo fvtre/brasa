@@ -102,19 +102,33 @@ export function CancelBookingButton({
                 checked={acceptedPolicy}
                 onChange={event => setAcceptedPolicy(event.target.checked)}
                 disabled={working}
+                required
+                aria-describedby="cancellation-policy-consent"
                 className="sr-only"
               />
               <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border ${acceptedPolicy ? 'border-primary bg-primary text-primary-foreground' : 'border-input'}`}>
                 {acceptedPolicy && <Check className="size-3.5" />}
               </span>
-              <span>Entiendo el monto que recibiré y acepto las condiciones de cancelación y devolución.</span>
+              <span id="cancellation-policy-consent">
+                He leído y acepto la{' '}
+                <a
+                  href="/cancelaciones"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-primary underline underline-offset-2"
+                  onClick={event => event.stopPropagation()}
+                >
+                  política de cancelación y devolución
+                </a>
+                , incluido el monto informado que recibiré.
+              </span>
             </label>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={working}>Volver</Button>
               <Button type="button" variant="destructive" onClick={cancelBooking} disabled={working || !acceptedPolicy}>
                 {working ? <Loader2 className="animate-spin" /> : <CircleX />}
-                Confirmar cancelación
+                Aceptar y cancelar reserva
               </Button>
             </div>
           </section>
