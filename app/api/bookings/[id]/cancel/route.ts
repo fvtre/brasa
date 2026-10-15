@@ -1,11 +1,20 @@
 import { NextResponse } from 'next/server'
 
 import { calculateCancellationQuote, eventDateInSantiago } from '@/lib/cancellation-policy'
+import { notifyBookingCancelled } from '@/lib/cancellation-notifications'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { getWebpayTransaction } from '@/lib/transbank'
 
 const CANCELLABLE_STATUSES = ['confirmada', 'esperando_pago', 'en_preparacion']
+
+async function notifyCancellationSafely(input: Parameters<typeof notifyBookingCancelled>[0]) {
+  try {
+    await notifyBookingCancelled(input)
+  } catch (error) {
+    console.error('Cancellation notifications:', error)
+  }
+}
 
 export async function POST(
   request: Request,
@@ -17,6 +26,9 @@ export async function POST(
 
   const { id } = await params
   const body = await request.json().catch(() => ({}))
+  if (body.acceptedPolicy !== true) {
+    return NextResponse.json({ error: 'Debes aceptar las condiciones de cancelación y devolución.' }, { status: 400 })
+  }
   const reason = typeof body.reason === 'string' ? body.reason.trim().slice(0, 500) : ''
   const admin = createAdminClient()
 
@@ -78,6 +90,12 @@ export async function POST(
   }
 
   if (cancellation?.status === 'completada') {
+    await notifyCancellationSafely({
+      bookingId: booking.id,
+      cancellationId: cancellation.id,
+      refundAmount: cancellation.refund_amount,
+      providerCompensation: cancellation.provider_compensation,
+    })
     return NextResponse.json({ ok: true, alreadyCompleted: true, cancellation })
   }
   if (cancellation?.status === 'procesando') {
@@ -209,6 +227,13 @@ export async function POST(
       { status: 500 },
     )
   }
+
+  await notifyCancellationSafely({
+    bookingId: booking.id,
+    cancellationId: cancellation.id,
+    refundAmount: paymentQuote.refundAmount,
+    providerCompensation: paymentQuote.providerCompensation,
+  })
 
   return NextResponse.json({ ok: true, result, quote: paymentQuote })
 }

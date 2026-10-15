@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CircleX, Loader2, X } from 'lucide-react'
+import { Check, CircleX, Loader2, X } from 'lucide-react'
 
 import type { CancellationQuote } from '@/lib/cancellation-policy'
 import { formatCLP } from '@/lib/format'
@@ -20,6 +20,7 @@ export function CancelBookingButton({
   const [reason, setReason] = useState('')
   const [working, setWorking] = useState(false)
   const [error, setError] = useState('')
+  const [acceptedPolicy, setAcceptedPolicy] = useState(false)
 
   async function cancelBooking() {
     setWorking(true)
@@ -28,7 +29,7 @@ export function CancelBookingButton({
       const response = await fetch(`/api/bookings/${bookingId}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ reason, acceptedPolicy }),
       })
       const payload = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(payload.error || 'No se pudo cancelar la reserva.')
@@ -63,6 +64,16 @@ export function CancelBookingButton({
 
             <p className="mt-4 rounded-xl bg-muted/60 p-4 text-sm font-medium">{quote.policyLabel}</p>
 
+            <div className="mt-4 rounded-xl border p-4 text-xs leading-relaxed text-muted-foreground">
+              <p className="font-semibold text-foreground">Condiciones de devolución</p>
+              <ul className="mt-2 space-y-1">
+                <li>Más de 7 días: devolución del 100%.</li>
+                <li>Entre 72 horas y 7 días: devolución del 80%.</li>
+                <li>Entre 24 y 72 horas: devolución del 50%.</li>
+                <li>Menos de 24 horas: sin devolución.</li>
+              </ul>
+            </div>
+
             <dl className="mt-5 space-y-3 text-sm">
               <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Pago original</dt><dd>{formatCLP(quote.originalAmount)}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Devolución a tu medio de pago</dt><dd className="font-bold text-emerald-700">{formatCLP(quote.refundAmount)}</dd></div>
@@ -85,9 +96,23 @@ export function CancelBookingButton({
               Al confirmar, la agenda se liberará y la devolución indicada se solicitará inmediatamente a Webpay. El abono puede tardar según tu banco.
             </p>
 
+            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm">
+              <input
+                type="checkbox"
+                checked={acceptedPolicy}
+                onChange={event => setAcceptedPolicy(event.target.checked)}
+                disabled={working}
+                className="sr-only"
+              />
+              <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border ${acceptedPolicy ? 'border-primary bg-primary text-primary-foreground' : 'border-input'}`}>
+                {acceptedPolicy && <Check className="size-3.5" />}
+              </span>
+              <span>Entiendo el monto que recibiré y acepto las condiciones de cancelación y devolución.</span>
+            </label>
+
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={working}>Volver</Button>
-              <Button type="button" variant="destructive" onClick={cancelBooking} disabled={working}>
+              <Button type="button" variant="destructive" onClick={cancelBooking} disabled={working || !acceptedPolicy}>
                 {working ? <Loader2 className="animate-spin" /> : <CircleX />}
                 Confirmar cancelación
               </Button>
