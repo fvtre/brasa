@@ -19,6 +19,8 @@ import { bookingStatusClasses, bookingStatusLabel } from '@/lib/booking-status'
 import { WebpayPaymentButton } from '@/components/webpay-payment-button'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { calculateCancellationQuote, eventDateInSantiago } from '@/lib/cancellation-policy'
+import { CancelBookingButton } from '@/components/cancel-booking-button'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -52,7 +54,7 @@ export default async function BookingDetailPage({
       comuna, address, guests, budget, subtotal,
       total, contact_name, contact_email, contact_phone, notes, payment_due_at,
       created_at,
-      payments(id, status, expires_at),
+      payments(id, status, amount, expires_at),
       items:booking_items(
         id, provider_slug, provider_name, category_slug,
         service_name, unit, unit_price, quantity, line_total,
@@ -76,8 +78,16 @@ export default async function BookingDetailPage({
 
   const items = (booking.items || []) as any[]
   const payments = (booking.payments || []) as any[]
-  const isPaid = payments.some(payment => ['pagado', 'autorizado'].includes(payment.status))
+  const paidPayment = payments.find(payment => ['pagado', 'autorizado'].includes(payment.status))
+  const isPaid = Boolean(paidPayment)
   const canPay = !isPaid && ['confirmada', 'esperando_pago'].includes(booking.status)
+  const cancellationQuote = calculateCancellationQuote(
+    Number(paidPayment?.amount ?? booking.total),
+    eventDateInSantiago(booking.event_date, booking.event_time),
+  )
+  const canCancel = isPaid
+    && cancellationQuote.eligible
+    && ['confirmada', 'esperando_pago', 'en_preparacion'].includes(booking.status)
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
@@ -229,13 +239,24 @@ export default async function BookingDetailPage({
                 <MessageCircle />
                 Chatear con prestador
               </Link>
+              {canCancel && (
+                <CancelBookingButton bookingId={booking.id} quote={cancellationQuote} />
+              )}
             </div>
           )}
           {canPay && (
-            <WebpayPaymentButton
-              bookingId={booking.id}
-              paymentDueAt={booking.payment_due_at}
-            />
+            <div className="mt-4 space-y-3">
+              <p className="rounded-lg bg-muted/50 p-3 text-xs leading-relaxed text-muted-foreground">
+                Antes de pagar, revisa la{' '}
+                <Link href="/cancelaciones" className="font-semibold text-primary hover:underline">
+                  política de cancelaciones y devoluciones
+                </Link>.
+              </p>
+              <WebpayPaymentButton
+                bookingId={booking.id}
+                paymentDueAt={booking.payment_due_at}
+              />
+            </div>
           )}
         </div>
       </section>
