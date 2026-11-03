@@ -57,6 +57,12 @@ export async function requireRole(roles: AppRole[]) {
   if (!session.profile.active) redirect('/login?error=Cuenta%20desactivada')
   if (!roles.includes(session.profile.role)) redirect('/cuenta')
 
+  if (session.profile.role === 'administrador') {
+    const supabase = await createClient()
+    const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (data?.currentLevel !== 'aal2') redirect('/seguridad/mfa?required=1')
+  }
+
   return session
 }
 

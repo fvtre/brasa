@@ -16,7 +16,7 @@ const ACTION_SOURCES = {
 } as const
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireRole(['administrador'])
+  const { profile } = await requireRole(['administrador'])
   const { id } = await params
   const body = await request.json().catch(() => null)
   const action = body?.action as keyof typeof ACTION_STATUS | undefined
@@ -36,6 +36,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .eq('booking_id', id)
     .in('provider_status', [...ACTION_SOURCES[action]])
   if (error) return NextResponse.json({ error: error.message }, { status: 409 })
+
+  const { recordSecurityAudit } = await import('@/lib/security-audit')
+  await recordSecurityAudit(profile, `booking.${action}`, 'booking', id, { status: ACTION_STATUS[action] })
 
   return NextResponse.json({ ok: true })
 }

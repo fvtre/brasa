@@ -4,10 +4,10 @@ import { ArrowLeft, CalendarClock, CircleCheck, ShieldCheck } from 'lucide-react
 export const metadata = { title: 'Cancelaciones y devoluciones | Brasa' }
 
 const rules = [
-  ['Más de 7 días', '100% de devolución', 'Sin compensación'],
-  ['Entre 72 horas y 7 días', '80% de devolución', '20% para el prestador'],
-  ['Entre 24 y 72 horas', '50% de devolución', '50% para el prestador'],
-  ['Menos de 24 horas', 'Sin devolución', '90% para el prestador y 10% para Brasa'],
+  ['Retracto legal aplicable', '100% de lo pagado', 'Sin compensación'],
+  ['Cancelación posterior', 'Saldo pagado, si existe', '90% del anticipo al prestador'],
+  ['Saldo vencido a 5 días', 'Sin devolución del anticipo', '90% del anticipo al prestador'],
+  ['Cancela prestador o Brasa', '100% de lo pagado', 'Sin compensación'],
 ]
 
 export default function CancellationPolicyPage() {
@@ -19,7 +19,7 @@ export default function CancellationPolicyPage() {
       <p className="mt-8 text-sm font-semibold text-primary">Condiciones de contratación</p>
       <h1 className="mt-2 text-3xl font-extrabold sm:text-4xl">Cancelaciones y devoluciones</h1>
       <p className="mt-3 max-w-2xl text-muted-foreground">
-        La devolución depende del tiempo restante para el inicio del evento. Antes de confirmar una cancelación, Brasa siempre muestra el monto exacto que recibirá cada parte.
+        El anticipo corresponde al 30% y reserva la agenda del prestador. El saldo del 70% debe pagarse a más tardar cinco días antes del evento. Antes de cancelar, Brasa muestra el monto exacto que recibirá cada parte.
       </p>
 
       <section className="mt-8 overflow-hidden rounded-2xl border bg-card">

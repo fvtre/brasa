@@ -19,8 +19,13 @@ import { bookingStatusClasses, bookingStatusLabel } from '@/lib/booking-status'
 import { WebpayPaymentButton } from '@/components/webpay-payment-button'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { calculateCancellationQuote, eventDateInSantiago } from '@/lib/cancellation-policy'
+import {
+  calculateCancellationQuote,
+  calculateInstallmentCancellationQuote,
+  eventDateInSantiago,
+} from '@/lib/cancellation-policy'
 import { CancelBookingButton } from '@/components/cancel-booking-button'
+import { calculateBookingPaymentPlan } from '@/lib/payment-plan'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -53,8 +58,9 @@ export default async function BookingDetailPage({
       id, code, event_name, event_date, event_time, status,
       comuna, address, guests, budget, subtotal,
       total, contact_name, contact_email, contact_phone, notes, payment_due_at,
+      payment_plan, balance_due_at,
       created_at,
-      payments(id, status, amount, expires_at),
+      payments(id, status, amount, expires_at, payment_stage),
       items:booking_items(
         id, provider_slug, provider_name, category_slug,
         service_name, unit, unit_price, quantity, line_total,
@@ -78,14 +84,51 @@ export default async function BookingDetailPage({
 
   const items = (booking.items || []) as any[]
   const payments = (booking.payments || []) as any[]
-  const paidPayment = payments.find(payment => ['pagado', 'autorizado'].includes(payment.status))
-  const isPaid = Boolean(paidPayment)
+  const paidPayments = payments.filter(payment => ['pagado', 'autorizado'].includes(payment.status))
+  const paidAmount = paidPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
+  const paidPayment = paidPayments.at(-1)
+  const hasPayment = paidAmount > 0
+  const isPaid = paidAmount >= Number(booking.total)
+  const usesInstallmentPlan = booking.payment_plan === 'deposit_balance' || paidAmount === 0
+  const paymentPlan = usesInstallmentPlan
+    ? calculateBookingPaymentPlan({
+        eventDate: booking.event_date,
+        eventTime: booking.event_time,
+        paidAmount,
+        total: booking.total,
+      })
+    : {
+        stage: 'full' as const,
+        amountDueNow: Number(booking.total) - paidAmount,
+        depositAmount: Number(booking.total),
+        balanceAmount: 0,
+        balanceDueAt: null,
+        paidAmount,
+        total: Number(booking.total),
+      }
   const canPay = !isPaid && ['confirmada', 'esperando_pago'].includes(booking.status)
-  const cancellationQuote = calculateCancellationQuote(
-    Number(paidPayment?.amount ?? booking.total),
-    eventDateInSantiago(booking.event_date, booking.event_time),
-  )
-  const canCancel = isPaid
+  const eventStartsAt = eventDateInSantiago(booking.event_date, booking.event_time)
+  const termsAcceptance = usesInstallmentPlan
+    ? await supabase
+        .from('booking_terms_acceptances')
+        .select('accepted_at')
+        .eq('booking_id', booking.id)
+        .order('accepted_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : null
+  const cancellationQuote = usesInstallmentPlan
+    ? calculateInstallmentCancellationQuote({
+        acceptedAt: termsAcceptance?.data?.accepted_at || null,
+        eventStartsAt,
+        paidAmount,
+        total: Number(booking.total),
+      })
+    : calculateCancellationQuote(
+        paidAmount || Number(paidPayment?.amount ?? booking.total),
+        eventStartsAt,
+      )
+  const canCancel = hasPayment
     && cancellationQuote.eligible
     && ['confirmada', 'esperando_pago', 'en_preparacion'].includes(booking.status)
 
@@ -225,12 +268,18 @@ export default async function BookingDetailPage({
           <h2 className="font-bold">Resumen de pago</h2>
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Servicios</dt><dd>{formatCLP(booking.subtotal)}</dd></div>
+            {paidAmount > 0 && !isPaid && (
+              <>
+                <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Anticipo pagado</dt><dd className="font-semibold text-emerald-700">{formatCLP(paidAmount)}</dd></div>
+                <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Saldo pendiente</dt><dd>{formatCLP(paymentPlan.amountDueNow)}</dd></div>
+              </>
+            )}
             <div className="flex justify-between gap-4 border-t pt-2 font-bold"><dt>Total</dt><dd>{formatCLP(booking.total)}</dd></div>
           </dl>
-          {isPaid && (
+          {hasPayment && (
             <div className="mt-4 space-y-3">
               <p className="rounded-lg bg-emerald-500/10 p-3 text-center text-sm font-semibold text-emerald-700">
-                Pago realizado
+                {isPaid ? 'Pago total realizado' : 'Anticipo pagado · horario reservado'}
               </p>
               <Link
                 href={`/mensajes?booking=${encodeURIComponent(booking.id)}`}
@@ -255,6 +304,12 @@ export default async function BookingDetailPage({
               <WebpayPaymentButton
                 bookingId={booking.id}
                 paymentDueAt={booking.payment_due_at}
+                amountDueNow={paymentPlan.amountDueNow}
+                balanceAmount={paymentPlan.balanceAmount}
+                balanceDueAt={paymentPlan.balanceDueAt || booking.balance_due_at}
+                installmentPlan={usesInstallmentPlan}
+                paymentStage={paymentPlan.stage}
+                total={booking.total}
               />
             </div>
           )}

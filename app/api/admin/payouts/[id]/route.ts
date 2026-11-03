@@ -4,7 +4,7 @@ import { requireRole } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireRole(['administrador'])
+  const { profile } = await requireRole(['administrador'])
   const { id } = await params
   const body = await request.json().catch(() => null)
   const reference = String(body?.reference || '').trim()
@@ -22,5 +22,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { data, error } = await supabase.from('provider_payouts').update({ status: 'pagada', paid_at: new Date().toISOString(), transfer_reference: reference }).eq('id', id).eq('status', 'lista_para_pagar').select('id').maybeSingle()
   if (error) return NextResponse.json({ error: error.message }, { status: 409 })
   if (!data) return NextResponse.json({ error: 'La liquidación cambió de estado. Actualiza la página.' }, { status: 409 })
+  const { recordSecurityAudit } = await import('@/lib/security-audit')
+  await recordSecurityAudit(profile, 'payout.mark_paid', 'provider_payout', id, { reference })
   return NextResponse.json({ ok: true })
 }

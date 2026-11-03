@@ -14,6 +14,7 @@ import { redirect } from 'next/navigation'
 
 import { requireRole } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
     Card,
     CardContent,
@@ -247,32 +248,55 @@ export default async function ProviderDashboard() {
                 })
             )
 
+            const bookingIds = Array.from(new Set(items.map((item: any) => item.booking_id)))
+            const admin = createAdminClient()
             const {
                 data: paymentRows,
                 error: paymentRowsError,
-            } = await supabase.rpc(
-                'get_my_provider_booking_payments'
-            )
+            } = bookingIds.length
+                ? await admin
+                    .from('bookings')
+                    .select('id,total,payment_plan,balance_due_at,payments(amount,status)')
+                    .in('id', bookingIds)
+                : { data: [], error: null }
 
             if (paymentRowsError) {
                 console.error(
-                    'RPC get_my_provider_booking_payments falló:',
+                    'Error cargando pagos del prestador:',
                     paymentRowsError
                 )
             } else {
                 const paymentByBooking = new Map(
-                    (paymentRows || []).map((row: any) => [
-                        row.booking_id,
-                        row.payment_state,
-                    ])
+                    (paymentRows || []).map((row: any) => {
+                        const paidAmount = (row.payments || [])
+                            .filter((payment: any) => ['pagado', 'autorizado'].includes(payment.status))
+                            .reduce((sum: number, payment: any) => sum + Number(payment.amount || 0), 0)
+                        const hasPending = (row.payments || [])
+                            .some((payment: any) => payment.status === 'pendiente')
+                        return [row.id, {
+                            payment_state: paidAmount >= Number(row.total)
+                                ? 'pagada'
+                                : paidAmount > 0
+                                    ? 'anticipo_pagado'
+                                    : hasPending ? 'pendiente' : 'sin_pago',
+                            paid_amount: paidAmount,
+                            booking_total: Number(row.total || 0),
+                            payment_plan: row.payment_plan,
+                            balance_due_at: row.balance_due_at,
+                        }]
+                    })
                 )
 
-                items = items.map((item: any) => ({
-                    ...item,
-                    payment_state:
-                        paymentByBooking.get(item.booking_id) ||
-                        'sin_pago',
-                }))
+                items = items.map((item: any) => {
+                    const payment = paymentByBooking.get(item.booking_id) as any
+                    return {
+                        ...item,
+                        payment_state: payment?.payment_state || 'sin_pago',
+                        paid_amount: Number(payment?.paid_amount || 0),
+                        booking_total: Number(payment?.booking_total || item.booking?.total || 0),
+                        balance_due_at: payment?.balance_due_at || null,
+                    }
+                })
             }
         }
     }
@@ -464,7 +488,11 @@ export default async function ProviderDashboard() {
 
                                                         {item.payment_state === 'pagada' ? (
                                                             <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
-                                                                Pagada
+                                                                Pago total confirmado
+                                                            </span>
+                                                        ) : item.payment_state === 'anticipo_pagado' ? (
+                                                            <span className="rounded-full border border-sky-500/30 bg-sky-500/15 px-2 py-0.5 text-[11px] font-medium text-sky-700 dark:text-sky-400">
+                                                                Anticipo pagado: {formatCLP(item.paid_amount)}
                                                             </span>
                                                         ) : booking?.status === 'esperando_pago' ? (
                                                             <span className="rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
@@ -586,13 +614,19 @@ export default async function ProviderDashboard() {
                                                     <p className="mt-1 text-xs text-muted-foreground">
                                                         Total servicio
                                                     </p>
+                                                    {item.payment_state === 'anticipo_pagado' && (
+                                                        <div className="mt-2 rounded-lg bg-sky-500/10 p-2 text-xs text-sky-800 dark:text-sky-300">
+                                                            <p>Cliente pagó: <b>{formatCLP(item.paid_amount)}</b></p>
+                                                            <p className="mt-1">Saldo pendiente: <b>{formatCLP(Math.max(0, item.booking_total - item.paid_amount))}</b></p>
+                                                        </div>
+                                                    )}
                                                     <p className="mt-2 text-xs text-red-600 dark:text-red-400">
-                                                        Comisión Brasa (10%): -{formatCLP(
+                                                        Comisión final Brasa (10%): -{formatCLP(
                                                             calculateBrasaCommission(item.line_total)
                                                         )}
                                                     </p>
                                                     <p className="mt-1 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-                                                        Recibirás {formatCLP(
+                                                        Neto final estimado: {formatCLP(
                                                             calculateProviderPayout(item.line_total)
                                                         )}
                                                     </p>

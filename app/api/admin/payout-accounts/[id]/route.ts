@@ -4,7 +4,7 @@ import { requireRole } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { user } = await requireRole(['administrador'])
+  const { user, profile } = await requireRole(['administrador'])
   const { id } = await params
   const body = await request.json().catch(() => null)
   if (typeof body?.verified !== 'boolean') return NextResponse.json({ error: 'Estado de verificación inválido.' }, { status: 400 })
@@ -18,5 +18,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   if (error) return NextResponse.json({ error: error.message }, { status: 409 })
   if (!data) return NextResponse.json({ error: 'Cuenta bancaria no encontrada.' }, { status: 404 })
+  const { recordSecurityAudit } = await import('@/lib/security-audit')
+  await recordSecurityAudit(profile, body.verified ? 'payout_account.verify' : 'payout_account.unverify', 'provider_payout_account', id)
   return NextResponse.json({ ok: true })
 }

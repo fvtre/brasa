@@ -66,12 +66,21 @@ export function CancelBookingButton({
 
             <div className="mt-4 rounded-xl border p-4 text-xs leading-relaxed text-muted-foreground">
               <p className="font-semibold text-foreground">Condiciones de devolución</p>
-              <ul className="mt-2 space-y-1">
-                <li>Más de 7 días: devolución del 100%.</li>
-                <li>Entre 72 horas y 7 días: devolución del 80%.</li>
-                <li>Entre 24 y 72 horas: devolución del 50%.</li>
-                <li>Menos de 24 horas: sin devolución.</li>
-              </ul>
+              {['retracto_legal', 'anticipo_retenido'].includes(quote.policyCode) ? (
+                <ul className="mt-2 space-y-1">
+                  <li>Durante el retracto aplicable se devuelve todo lo pagado.</li>
+                  <li>Después del retracto, el anticipo del 30% garantiza la agenda y no se devuelve.</li>
+                  <li>Del anticipo retenido, 90% corresponde al prestador y 10% a Brasa.</li>
+                  <li>El saldo pagado se devuelve al cancelar antes del evento.</li>
+                </ul>
+              ) : (
+                <ul className="mt-2 space-y-1">
+                  <li>Más de 7 días: devolución del 100%.</li>
+                  <li>Entre 72 horas y 7 días: devolución del 80%.</li>
+                  <li>Entre 24 y 72 horas: devolución del 50%.</li>
+                  <li>Menos de 24 horas: sin devolución.</li>
+                </ul>
+              )}
             </div>
 
             <dl className="mt-5 space-y-3 text-sm">

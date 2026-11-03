@@ -1,15 +1,17 @@
 import { AdminBookingManager, type AdminBooking } from '@/components/admin-booking-manager'
+import { requireRole } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminBookingsPage() {
+  await requireRole(['administrador'])
   const supabase = await createClient()
   const { data, error } = await supabase.from('bookings').select(`
-    id,code,event_name,event_date,event_time,status,total,
+    id,code,event_name,event_date,event_time,status,total,payment_plan,balance_due_at,
     client:profiles!bookings_client_id_fkey(full_name,email),
     items:booking_items(id,provider_name,service_name,provider_status,line_total),
-    payments(status,amount,authorized_at)
+    payments(status,amount,authorized_at,payment_stage)
   `).order('created_at', { ascending: false })
 
   if (error) throw new Error(error.message)

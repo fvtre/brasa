@@ -660,6 +660,9 @@ export async function POST(
 
           total,
 
+          payment_plan:
+            'deposit_balance',
+
           status:
             'pendiente',
 

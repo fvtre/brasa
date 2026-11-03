@@ -114,6 +114,10 @@ const ADMIN_NAV: NavItem[] = [
         href: '/admin/liquidaciones',
         label: 'Liquidaciones',
     },
+    {
+        href: '/admin/auditoria',
+        label: 'Auditoría',
+    },
 ]
 
 export function SiteHeader() {

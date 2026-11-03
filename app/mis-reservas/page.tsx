@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { CalendarDays, MapPin, PartyPopper, Users } from 'lucide-react'
+import { CalendarDays, CreditCard, MapPin, PartyPopper, Users } from 'lucide-react'
 import { requireRole } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { formatCLP } from '@/lib/format'
@@ -25,7 +25,8 @@ export default async function MisReservasPage({
   const { data: bookings, error } = await supabase
     .from('bookings')
     .select(`
-      id,code,event_name,event_date,event_time,status,total,comuna,guests,
+      id,code,event_name,event_date,event_time,status,total,comuna,guests,balance_due_at,payment_plan,
+      payments(id,status,amount,payment_stage),
       items:booking_items(id,provider_name,service_name,provider_status,line_total)
     `)
     .eq('client_id', profile.id)
@@ -56,7 +57,14 @@ export default async function MisReservasPage({
             </Link>
           </div>
         ) : (
-          (bookings || []).map((booking: any) => (
+          (bookings || []).map((booking: any) => {
+            const paidAmount = (booking.payments || [])
+              .filter((payment: any) => ['pagado', 'autorizado'].includes(payment.status))
+              .reduce((sum: number, payment: any) => sum + Number(payment.amount || 0), 0)
+            const balance = Math.max(0, Number(booking.total) - paidAmount)
+            const hasDeposit = paidAmount > 0 && balance > 0
+            const fullyPaid = paidAmount >= Number(booking.total)
+            return (
             <article key={booking.id} className="rounded-2xl border bg-card p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -65,6 +73,16 @@ export default async function MisReservasPage({
                     <span className={`rounded-full px-2 py-1 text-xs font-semibold ${bookingStatusClasses(booking.status)}`}>
                       {bookingStatusLabel(booking.status)}
                     </span>
+                    {hasDeposit && (
+                      <span className="rounded-full bg-sky-500/15 px-2 py-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
+                        Anticipo pagado
+                      </span>
+                    )}
+                    {fullyPaid && (
+                      <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                        Pago total
+                      </span>
+                    )}
                   </div>
                   <h2 className="mt-2 text-xl font-bold">{booking.event_name}</h2>
                   <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
@@ -78,6 +96,27 @@ export default async function MisReservasPage({
                   <p className="text-xl font-bold">{formatCLP(booking.total)}</p>
                 </div>
               </div>
+
+              {paidAmount > 0 && (
+                <div className={`mt-4 grid gap-3 rounded-xl border p-4 sm:grid-cols-3 ${hasDeposit ? 'border-sky-500/30 bg-sky-500/5' : 'border-emerald-500/30 bg-emerald-500/5'}`}>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Pagado</p>
+                    <p className="mt-1 font-bold text-emerald-700">{formatCLP(paidAmount)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Saldo pendiente</p>
+                    <p className="mt-1 font-bold">{formatCLP(balance)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Fecha límite</p>
+                    <p className="mt-1 font-semibold">
+                      {hasDeposit && booking.balance_due_at
+                        ? new Intl.DateTimeFormat('es-CL', { dateStyle: 'medium', timeZone: 'America/Santiago' }).format(new Date(booking.balance_due_at))
+                        : 'Pago completado'}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-2">
                 {(booking.items || []).map((item: any) => (
@@ -93,7 +132,16 @@ export default async function MisReservasPage({
                 ))}
               </div>
 
-              <div className="mt-4 flex justify-end border-t pt-4">
+              <div className="mt-4 flex flex-wrap justify-end gap-3 border-t pt-4">
+                {hasDeposit && (
+                  <Link
+                    href={`/mis-reservas/${encodeURIComponent(booking.code)}`}
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+                  >
+                    <CreditCard className="size-4" />
+                    Pagar saldo
+                  </Link>
+                )}
                 <Link
                   href={`/mis-reservas/${encodeURIComponent(booking.code)}`}
                   className="text-sm font-semibold text-primary hover:underline"
@@ -102,7 +150,8 @@ export default async function MisReservasPage({
                 </Link>
               </div>
             </article>
-          ))
+            )
+          })
         )}
       </div>
     </div>

@@ -12,7 +12,7 @@ Configura estas variables en Production, Preview y Development:
 
 ```text
 RESEND_API_KEY=re_...
-RESEND_FROM_EMAIL=Brasa <notificaciones@brasa.reparotufuga.cl>
+RESEND_FROM_EMAIL=Brasa <notificaciones@brasa.cl>
 RESEND_TEMPLATE_ID=f821d971-0c25-4231-bb0d-bfedc2150cae
 NEXT_PUBLIC_SITE_URL=https://brasa-eventos.vercel.app
 CRON_SECRET=una-cadena-aleatoria-larga

@@ -1,6 +1,8 @@
 export const BRASA_TIME_ZONE = 'America/Santiago'
 
 export type CancellationPolicyCode =
+  | 'retracto_legal'
+  | 'anticipo_retenido'
   | 'mas_7_dias'
   | '72_horas_a_7_dias'
   | '24_a_72_horas'
@@ -16,6 +18,58 @@ export type CancellationQuote = {
   platformFee: number
   policyCode: CancellationPolicyCode
   policyLabel: string
+}
+
+export function calculateInstallmentCancellationQuote(input: {
+  acceptedAt: string | null
+  eventStartsAt: Date
+  paidAmount: number
+  total: number
+  now?: Date
+}): CancellationQuote {
+  const now = input.now || new Date()
+  const paidAmount = Math.max(0, Math.round(input.paidAmount))
+  const depositAmount = Math.min(paidAmount, Math.round(Math.max(0, input.total) * 0.30))
+  const hoursBeforeEvent = (input.eventStartsAt.getTime() - now.getTime()) / 3_600_000
+  const acceptedAt = input.acceptedAt ? new Date(input.acceptedAt) : null
+  const retractDeadline = acceptedAt
+    ? new Date(acceptedAt.getTime() + 10 * 24 * 60 * 60 * 1000)
+    : null
+  const withinRetract = Boolean(
+    acceptedAt
+    && !Number.isNaN(acceptedAt.getTime())
+    && retractDeadline
+    && now <= retractDeadline
+    && hoursBeforeEvent > 0,
+  )
+
+  if (withinRetract) {
+    return {
+      eligible: true,
+      hoursBeforeEvent,
+      originalAmount: paidAmount,
+      refundAmount: paidAmount,
+      retainedAmount: 0,
+      providerCompensation: 0,
+      platformFee: 0,
+      policyCode: 'retracto_legal',
+      policyLabel: 'Retracto aplicable: devolución completa',
+    }
+  }
+
+  const retainedAmount = depositAmount
+  const platformFee = Math.round(retainedAmount * 0.10)
+  return {
+    eligible: hoursBeforeEvent > 0,
+    hoursBeforeEvent,
+    originalAmount: paidAmount,
+    refundAmount: paidAmount - retainedAmount,
+    retainedAmount,
+    providerCompensation: retainedAmount - platformFee,
+    platformFee,
+    policyCode: 'anticipo_retenido',
+    policyLabel: 'El anticipo garantiza la agenda y no se devuelve',
+  }
 }
 
 function partsInTimeZone(date: Date, timeZone: string) {

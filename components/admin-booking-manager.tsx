@@ -19,7 +19,7 @@ type BookingItem = {
   line_total: number
 }
 
-type Payment = { status: string; amount: number; authorized_at: string | null }
+type Payment = { status: string; amount: number; authorized_at: string | null; payment_stage: string | null }
 
 export type AdminBooking = {
   id: string
@@ -29,6 +29,8 @@ export type AdminBooking = {
   event_time: string
   status: string
   total: number
+  payment_plan: string | null
+  balance_due_at: string | null
   client: { full_name: string | null; email: string | null } | null
   items: BookingItem[]
   payments: Payment[]
@@ -69,7 +71,11 @@ export function AdminBookingManager({ bookings }: { bookings: AdminBooking[] }) 
     <div className="mt-8 space-y-4">
       {error && <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
       {bookings.map(booking => {
-        const paid = booking.payments.some(payment => ['pagado', 'autorizado'].includes(payment.status))
+        const successfulPayments = booking.payments.filter(payment => ['pagado', 'autorizado'].includes(payment.status))
+        const paidAmount = successfulPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
+        const balance = Math.max(0, Number(booking.total) - paidAmount)
+        const hasDeposit = paidAmount > 0 && balance > 0
+        const fullyPaid = paidAmount >= Number(booking.total)
         const servicesTotal = booking.items.reduce((sum, item) => sum + Number(item.line_total || 0), 0)
         const providerTotal = booking.items.reduce((sum, item) => sum + calculateProviderPayout(Number(item.line_total || 0)), 0)
         const brasaTotal = booking.items.reduce((sum, item) => sum + calculateBrasaCommission(Number(item.line_total || 0)), 0)
@@ -81,17 +87,24 @@ export function AdminBookingManager({ bookings }: { bookings: AdminBooking[] }) 
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-lg font-bold">{booking.event_name}</h2>
                     <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', bookingStatusClasses(booking.status))}>{bookingStatusLabel(booking.status)}</span>
-                    {paid && <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700">Pagada</span>}
+                    {fullyPaid && <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700">Pago total</span>}
+                    {hasDeposit && <span className="rounded-full bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-700">Anticipo pagado</span>}
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">{booking.code} · {booking.event_date} {booking.event_time?.slice(0, 5)} · {booking.client?.full_name || 'Cliente'} · {booking.client?.email || 'Sin correo'}</p>
                 </div>
-                <div className="text-right"><b className="text-xl">{formatCLP(booking.total)}</b><p className="text-xs text-muted-foreground">Total pagado por cliente</p></div>
+                <div className="text-left sm:text-right"><b className="text-xl">{formatCLP(booking.total)}</b><p className="text-xs text-muted-foreground">Valor total del servicio</p></div>
+              </div>
+
+              <div className="mt-4 grid gap-3 rounded-xl border border-sky-200 bg-sky-50 p-4 text-slate-950 sm:grid-cols-3">
+                <div><p className="text-xs text-slate-600">Pagado por cliente</p><b className="text-emerald-700">{formatCLP(paidAmount)}</b></div>
+                <div><p className="text-xs text-slate-600">Saldo pendiente</p><b>{formatCLP(balance)}</b></div>
+                <div><p className="text-xs text-slate-600">Fecha límite del saldo</p><b>{balance > 0 && booking.balance_due_at ? new Intl.DateTimeFormat('es-CL', { dateStyle: 'medium', timeZone: 'America/Santiago' }).format(new Date(booking.balance_due_at)) : 'Sin saldo pendiente'}</b></div>
               </div>
 
               <div className="mt-4 grid gap-3 rounded-xl bg-muted/40 p-4 sm:grid-cols-3">
                 <div><p className="text-xs text-muted-foreground">Servicios</p><b>{formatCLP(servicesTotal)}</b></div>
                 <div><p className="text-xs text-muted-foreground">Comisión Brasa (10%)</p><b className="text-primary">{formatCLP(brasaTotal)}</b></div>
-                <div><p className="text-xs text-muted-foreground">Por pagar a prestadores</p><b className="text-emerald-700">{formatCLP(providerTotal)}</b><p className="mt-0.5 text-[11px] text-muted-foreground">{!paid ? 'Pendiente del pago del cliente' : booking.status === 'completada' ? 'Listo para liquidar' : 'Se libera después del evento'}</p></div>
+                <div><p className="text-xs text-muted-foreground">Pago final a prestadores</p><b className="text-emerald-700">{formatCLP(providerTotal)}</b><p className="mt-0.5 text-[11px] text-muted-foreground">{!fullyPaid ? `Retenido: faltan ${formatCLP(balance)}` : booking.status === 'completada' ? 'Listo para liquidar' : 'Se libera después del evento'}</p></div>
               </div>
 
               <div className="mt-4 grid gap-2">

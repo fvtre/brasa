@@ -39,7 +39,7 @@ export async function notifyPaymentConfirmed(paymentId: string, bookingId: strin
 
   const { data: payment, error: paymentError } = await admin
     .from('payments')
-    .select('id,buy_order,external_id,amount,authorized_at,created_at')
+    .select('id,buy_order,external_id,amount,payment_stage,authorized_at,created_at')
     .eq('id', paymentId).single()
   if (paymentError) throw paymentError
 
@@ -55,20 +55,28 @@ export async function notifyPaymentConfirmed(paymentId: string, bookingId: strin
   if (profilesError) throw profilesError
   const emails = new Map((profiles || []).map(profile => [profile.id, profile.email]))
   const eventName = booking.event_name || `Reserva ${booking.code}`
+  const isDeposit = payment.payment_stage === 'deposit'
+  const isBalance = payment.payment_stage === 'balance'
+  const paymentLabel = isDeposit ? 'Anticipo confirmado' : isBalance ? 'Saldo confirmado' : 'Pago confirmado'
+  const remainingBalance = Math.max(0, Number(booking.total) - Number(payment.amount))
 
   const recipients: Recipient[] = [
     {
       userId: booking.client_id,
-      title: 'Pago confirmado',
-      body: `${eventName}: recibimos tu pago y la reserva quedó confirmada.`,
+      title: paymentLabel,
+      body: isDeposit
+        ? `${eventName}: recibimos el anticipo de ${formatClp(Number(payment.amount))}. Saldo pendiente: ${formatClp(remainingBalance)}.`
+        : `${eventName}: recibimos tu pago y la reserva quedó confirmada.`,
       href: `/mis-reservas/${booking.code}`,
       email: booking.contact_email || emails.get(booking.client_id) || null,
       kind: 'client',
     },
     ...Array.from(providerItems, ([userId, providerBookingItems]) => ({
       userId,
-      title: 'Pago confirmado',
-      body: `${eventName}: el cliente pagó ${providerBookingItems.map(item => item.service_name).join(', ')}.`,
+      title: paymentLabel,
+      body: isDeposit
+        ? `${eventName}: el cliente pagó un anticipo de ${formatClp(Number(payment.amount))}. El servicio aún tiene saldo pendiente.`
+        : `${eventName}: el cliente completó el pago de ${providerBookingItems.map(item => item.service_name).join(', ')}.`,
       href: '/prestador/dashboard#solicitudes',
       email: emails.get(userId) || null,
       kind: 'provider' as const,
@@ -103,12 +111,19 @@ export async function notifyPaymentConfirmed(paymentId: string, bookingId: strin
     if (recipient.email && !notification.email_sent_at) {
       const detailUrl = `${getPublicAppUrl()}${recipient.href}`
       const roleText = recipient.kind === 'client'
-        ? 'Tu pago fue aprobado y tu reserva quedó confirmada.'
-        : 'El cliente completó el pago. La reserva ya está confirmada.'
+        ? isDeposit
+          ? `Tu anticipo de ${formatClp(Number(payment.amount))} fue aprobado. Aún debes pagar ${formatClp(remainingBalance)} cinco días antes del evento.`
+          : 'Tu pago fue aprobado y tu reserva quedó confirmada.'
+        : isDeposit
+          ? `El cliente pagó un anticipo de ${formatClp(Number(payment.amount))}. El valor total del servicio es ${formatClp(Number(booking.total))} y todavía existe saldo pendiente.`
+          : 'El cliente completó el pago. La reserva ya está pagada.'
       const summary = `${booking.event_date} a las ${String(booking.event_time).slice(0, 5)} · ${booking.comuna}`
       const selectedItems = recipient.kind === 'client' ? items : (providerItems.get(recipient.userId) || [])
       const grossAmount = selectedItems.reduce((sum, item) => sum + Number(item.line_total || 0), 0)
-      const displayedAmount = recipient.kind === 'client' ? Number(booking.total) : grossAmount
+      const providerPaymentShare = booking.subtotal > 0
+        ? Math.round(Number(payment.amount) * grossAmount / Number(booking.subtotal))
+        : 0
+      const displayedAmount = recipient.kind === 'client' ? Number(payment.amount) : providerPaymentShare
       const itemsHtml = selectedItems.map(item => {
         const quantity = Number(item.quantity || 1)
         return `${escapeHtml(item.service_name)} — ${quantity} × ${escapeHtml(formatClp(Number(item.unit_price || 0)))} = <strong>${escapeHtml(formatClp(Number(item.line_total || 0)))}</strong>`
@@ -117,18 +132,18 @@ export async function notifyPaymentConfirmed(paymentId: string, bookingId: strin
       try {
         const logoUrl = `${getPublicAppUrl()}/icon.svg`
         const providerNetRow = recipient.kind === 'provider'
-          ? `<tr><td style="padding:8px 0;color:#786b66">Monto neto prestador</td><td style="padding:8px 0;text-align:right;font-weight:700;color:#087a5b">${escapeHtml(formatClp(calculateProviderPayout(grossAmount)))}</td></tr>`
+          ? `<tr><td style="padding:8px 0;color:#786b66">Neto final estimado al completar</td><td style="padding:8px 0;text-align:right;font-weight:700;color:#087a5b">${escapeHtml(formatClp(calculateProviderPayout(grossAmount)))}</td></tr>`
           : ''
         const result = await sendTransactionalEmail({
           to: recipient.email,
-          subject: `Comprobante de pago · ${eventName}`,
+          subject: `${paymentLabel} · ${eventName}`,
           idempotencyKey: `payment-confirmed/${paymentId}/${recipient.userId}`,
           useTemplate: false,
-          text: `${roleText}\nReserva: ${booking.code}\nEvento: ${eventName}\nFecha: ${summary}\nTotal: ${formatClp(displayedAmount)}\nReferencia: ${payment.buy_order || payment.external_id || payment.id}\n${detailUrl}`,
+          text: `${roleText}\nReserva: ${booking.code}\nEvento: ${eventName}\nFecha: ${summary}\nMonto pagado ahora: ${formatClp(displayedAmount)}\nValor total del servicio: ${formatClp(recipient.kind === 'client' ? Number(booking.total) : grossAmount)}\nSaldo pendiente: ${formatClp(isDeposit ? remainingBalance : 0)}\nReferencia: ${payment.buy_order || payment.external_id || payment.id}\n${detailUrl}`,
           templateVariables: {
             PREVIEW: roleText,
-            BADGE: recipient.kind === 'client' ? 'Pago confirmado' : 'Reserva pagada',
-            TITLE: recipient.kind === 'client' ? 'Comprobante de tu reserva' : 'Comprobante del servicio pagado',
+            BADGE: paymentLabel,
+            TITLE: isDeposit ? 'Comprobante de anticipo' : 'Comprobante de pago',
             MESSAGE: roleText,
             EVENT_NAME: eventName,
             BOOKING_CODE: booking.code,
@@ -141,13 +156,15 @@ export async function notifyPaymentConfirmed(paymentId: string, bookingId: strin
             PAYMENT_REFERENCE: payment.buy_order || payment.external_id || payment.id,
             PAYMENT_DATE: formatPaymentDate(payment.authorized_at || payment.created_at),
             PROVIDER_NET: recipient.kind === 'provider' ? formatClp(calculateProviderPayout(grossAmount)) : 'No aplica',
-            DETAIL: recipient.kind === 'client'
-              ? 'Este comprobante confirma el pago de la reserva. Ya puedes comunicarte con el prestador desde Brasa.'
-              : 'El monto neto considera la comisión Brasa del 10%. Revisa la sección Pagos para seguir la liquidación.',
+            DETAIL: isDeposit
+              ? `Este comprobante corresponde únicamente al anticipo. Saldo pendiente: ${formatClp(remainingBalance)}.`
+              : recipient.kind === 'client'
+                ? 'Este comprobante confirma el pago total de la reserva.'
+                : 'El monto neto final considera la comisión Brasa del 10%.',
             ACTION_URL: detailUrl,
             ACTION_TEXT: recipient.kind === 'client' ? 'Ver reserva y chatear' : 'Ver reserva',
           },
-          html: `<!doctype html><html lang="es"><body style="margin:0;background:#f7f2ef"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:28px 12px"><table role="presentation" width="600" cellspacing="0" cellpadding="0" style="width:100%;max-width:600px;background:#fff;border:1px solid #eaded8;border-radius:22px;overflow:hidden"><tr><td style="padding:22px 28px;background:#1c1715"><img src="${escapeHtml(logoUrl)}" width="42" height="42" alt="Brasa" style="vertical-align:middle;border-radius:13px"><strong style="margin-left:12px;color:#fff;font:800 24px Arial">Brasa</strong></td></tr><tr><td style="padding:30px;font-family:Arial,sans-serif;color:#211714"><span style="padding:7px 12px;border-radius:999px;background:#dcf8ef;color:#087a5b;font-size:13px;font-weight:700">Pago confirmado</span><h1 style="font-size:27px;margin:18px 0 10px">Comprobante de reserva</h1><p style="font-size:16px;line-height:1.6;color:#514743">${escapeHtml(roleText)}</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:22px 0;padding:18px;border:1px solid #eaded8;border-radius:14px;background:#fcfaf9"><tr><td style="padding:7px 0;color:#786b66">Evento</td><td style="text-align:right;font-weight:700">${escapeHtml(eventName)}</td></tr><tr><td style="padding:7px 0;color:#786b66">Reserva</td><td style="text-align:right">${escapeHtml(booking.code)}</td></tr><tr><td style="padding:7px 0;color:#786b66">Fecha y lugar</td><td style="text-align:right">${escapeHtml(summary)}</td></tr><tr><td colspan="2" style="padding:14px 0 6px;border-top:1px solid #eaded8;font-weight:700">Servicios</td></tr><tr><td colspan="2" style="padding-bottom:12px;line-height:1.65">${itemsHtml}</td></tr><tr><td style="padding:12px 0 0;border-top:1px solid #eaded8;color:#786b66">Total</td><td style="padding:12px 0 0;border-top:1px solid #eaded8;text-align:right;font-size:20px;font-weight:800">${escapeHtml(formatClp(displayedAmount))}</td></tr><tr><td style="padding:8px 0;color:#786b66">Referencia</td><td style="padding:8px 0;text-align:right">${escapeHtml(payment.buy_order || payment.external_id || payment.id)}</td></tr><tr><td style="padding:8px 0;color:#786b66">Fecha de pago</td><td style="padding:8px 0;text-align:right">${escapeHtml(formatPaymentDate(payment.authorized_at || payment.created_at))}</td></tr>${providerNetRow}</table><a href="${escapeHtml(detailUrl)}" style="display:inline-block;padding:13px 20px;border-radius:11px;background:#f05a22;color:#fff;text-decoration:none;font-weight:700">${recipient.kind === 'client' ? 'Ver reserva y chatear' : 'Ver reserva'}</a><p style="margin-top:26px;color:#8b7f79;font-size:12px">Comprobante informativo emitido por Brasa. Conserva la referencia para cualquier consulta.</p></td></tr></table></td></tr></table></body></html>`,
+          html: `<!doctype html><html lang="es"><body style="margin:0;background:#f7f2ef"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:28px 12px"><table role="presentation" width="600" cellspacing="0" cellpadding="0" style="width:100%;max-width:600px;background:#fff;border:1px solid #eaded8;border-radius:22px;overflow:hidden"><tr><td style="padding:22px 28px;background:#1c1715"><img src="${escapeHtml(logoUrl)}" width="42" height="42" alt="Brasa" style="vertical-align:middle;border-radius:13px"><strong style="margin-left:12px;color:#fff;font:800 24px Arial">Brasa</strong></td></tr><tr><td style="padding:30px;font-family:Arial,sans-serif;color:#211714"><span style="padding:7px 12px;border-radius:999px;background:#dcf8ef;color:#087a5b;font-size:13px;font-weight:700">${escapeHtml(paymentLabel)}</span><h1 style="font-size:27px;margin:18px 0 10px">${isDeposit ? 'Comprobante de anticipo' : 'Comprobante de pago'}</h1><p style="font-size:16px;line-height:1.6;color:#514743">${escapeHtml(roleText)}</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:22px 0;padding:18px;border:1px solid #eaded8;border-radius:14px;background:#fcfaf9"><tr><td style="padding:7px 0;color:#786b66">Evento</td><td style="text-align:right;font-weight:700">${escapeHtml(eventName)}</td></tr><tr><td style="padding:7px 0;color:#786b66">Reserva</td><td style="text-align:right">${escapeHtml(booking.code)}</td></tr><tr><td style="padding:7px 0;color:#786b66">Fecha y lugar</td><td style="text-align:right">${escapeHtml(summary)}</td></tr><tr><td colspan="2" style="padding:14px 0 6px;border-top:1px solid #eaded8;font-weight:700">Servicios</td></tr><tr><td colspan="2" style="padding-bottom:12px;line-height:1.65">${itemsHtml}</td></tr><tr><td style="padding:12px 0 0;border-top:1px solid #eaded8;color:#786b66">Monto pagado ahora</td><td style="padding:12px 0 0;border-top:1px solid #eaded8;text-align:right;font-size:20px;font-weight:800">${escapeHtml(formatClp(displayedAmount))}</td></tr><tr><td style="padding:8px 0;color:#786b66">Valor total del servicio</td><td style="padding:8px 0;text-align:right;font-weight:700">${escapeHtml(formatClp(recipient.kind === 'client' ? Number(booking.total) : grossAmount))}</td></tr>${isDeposit ? `<tr><td style="padding:8px 0;color:#786b66">Saldo pendiente del cliente</td><td style="padding:8px 0;text-align:right;font-weight:700;color:#b45309">${escapeHtml(formatClp(remainingBalance))}</td></tr>` : ''}<tr><td style="padding:8px 0;color:#786b66">Referencia</td><td style="padding:8px 0;text-align:right">${escapeHtml(payment.buy_order || payment.external_id || payment.id)}</td></tr><tr><td style="padding:8px 0;color:#786b66">Fecha de pago</td><td style="padding:8px 0;text-align:right">${escapeHtml(formatPaymentDate(payment.authorized_at || payment.created_at))}</td></tr>${providerNetRow}</table><a href="${escapeHtml(detailUrl)}" style="display:inline-block;padding:13px 20px;border-radius:11px;background:#f05a22;color:#fff;text-decoration:none;font-weight:700">${recipient.kind === 'client' ? 'Ver reserva y chatear' : 'Ver reserva'}</a><p style="margin-top:26px;color:#8b7f79;font-size:12px">Comprobante informativo emitido por Brasa. Conserva la referencia para cualquier consulta.</p></td></tr></table></td></tr></table></body></html>`,
         })
 
         if (result.sent) {

@@ -1,12 +1,243 @@
 import { NextResponse } from 'next/server'
 
-import { calculateCancellationQuote, eventDateInSantiago } from '@/lib/cancellation-policy'
+import {
+  calculateCancellationQuote,
+  calculateInstallmentCancellationQuote,
+  eventDateInSantiago,
+} from '@/lib/cancellation-policy'
 import { notifyBookingCancelled } from '@/lib/cancellation-notifications'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { getWebpayTransaction } from '@/lib/transbank'
 
 const CANCELLABLE_STATUSES = ['confirmada', 'esperando_pago', 'en_preparacion']
+
+type PaidPayment = {
+  amount: number
+  id: string
+  payment_stage: 'deposit' | 'balance' | 'full'
+  token: string | null
+}
+
+async function cancelInstallmentBooking(input: {
+  admin: ReturnType<typeof createAdminClient>
+  booking: {
+    client_id: string
+    code: string
+    event_date: string
+    event_time: string
+    id: string
+    status: string
+    total: number
+  }
+  reason: string
+  userId: string
+}) {
+  const { admin, booking, reason, userId } = input
+  const { data: paymentsData, error: paymentsError } = await admin
+    .from('payments')
+    .select('id,token,amount,payment_stage')
+    .eq('booking_id', booking.id)
+    .eq('provider', 'webpay')
+    .in('status', ['pagado', 'autorizado'])
+    .order('created_at', { ascending: true })
+  if (paymentsError) return NextResponse.json({ error: paymentsError.message }, { status: 500 })
+
+  const payments = (paymentsData || []) as PaidPayment[]
+  if (!payments.length) {
+    return NextResponse.json({ error: 'No encontramos un pago confirmado para devolver.' }, { status: 409 })
+  }
+
+  const { data: acceptance } = await admin
+    .from('booking_terms_acceptances')
+    .select('accepted_at')
+    .eq('booking_id', booking.id)
+    .order('accepted_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  const paidAmount = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
+  const quote = calculateInstallmentCancellationQuote({
+    acceptedAt: acceptance?.accepted_at || null,
+    eventStartsAt: eventDateInSantiago(booking.event_date, booking.event_time),
+    paidAmount,
+    total: booking.total,
+  })
+  if (!quote.eligible) {
+    return NextResponse.json({ error: 'El evento ya comenzó. Contacta a soporte para revisar el caso.' }, { status: 409 })
+  }
+
+  const { data: paidPayout } = await admin
+    .from('provider_payouts')
+    .select('id')
+    .eq('booking_id', booking.id)
+    .eq('status', 'pagada')
+    .limit(1)
+    .maybeSingle()
+  if (paidPayout) {
+    return NextResponse.json({ error: 'Esta reserva requiere revisión administrativa porque ya fue liquidada.' }, { status: 409 })
+  }
+
+  let { data: cancellation, error: cancellationError } = await admin
+    .from('booking_cancellations')
+    .select('*')
+    .eq('booking_id', booking.id)
+    .maybeSingle()
+  if (cancellationError) return NextResponse.json({ error: cancellationError.message }, { status: 500 })
+
+  if (cancellation?.status === 'completada') {
+    await notifyCancellationSafely({
+      bookingId: booking.id,
+      cancellationId: cancellation.id,
+      refundAmount: cancellation.refund_amount,
+      providerCompensation: cancellation.provider_compensation,
+    })
+    return NextResponse.json({ ok: true, alreadyCompleted: true, cancellation })
+  }
+
+  if (!cancellation) {
+    const created = await admin
+      .from('booking_cancellations')
+      .insert({
+        booking_id: booking.id,
+        payment_id: payments[0].id,
+        requested_by: userId,
+        status: 'procesando',
+        policy_code: quote.policyCode,
+        hours_before_event: Number(quote.hoursBeforeEvent.toFixed(2)),
+        original_amount: quote.originalAmount,
+        refund_amount: quote.refundAmount,
+        retained_amount: quote.retainedAmount,
+        provider_compensation: quote.providerCompensation,
+        platform_fee: quote.platformFee,
+        reason: reason || null,
+      })
+      .select('*')
+      .single()
+    if (created.error) return NextResponse.json({ error: created.error.message }, { status: 409 })
+    cancellation = created.data
+  } else {
+    const resumed = await admin
+      .from('booking_cancellations')
+      .update({ status: 'procesando', failure_reason: null, reason: reason || cancellation.reason })
+      .eq('id', cancellation.id)
+      .select('*')
+      .single()
+    if (resumed.error) return NextResponse.json({ error: resumed.error.message }, { status: 409 })
+    cancellation = resumed.data
+  }
+
+  const requestedRefundByPayment = new Map<string, number>()
+  for (const payment of payments) {
+    let requestedAmount = 0
+    if (quote.policyCode === 'retracto_legal') requestedAmount = payment.amount
+    else if (payment.payment_stage === 'balance') requestedAmount = payment.amount
+    else if (payment.payment_stage === 'full') requestedAmount = quote.refundAmount
+    requestedRefundByPayment.set(payment.id, Math.min(payment.amount, Math.max(0, requestedAmount)))
+  }
+
+  const refundResults: Array<Record<string, unknown>> = []
+  for (const payment of payments) {
+    const requestedAmount = requestedRefundByPayment.get(payment.id) || 0
+    let { data: refundRow, error: refundReadError } = await admin
+      .from('booking_cancellation_refunds')
+      .select('*')
+      .eq('cancellation_id', cancellation.id)
+      .eq('payment_id', payment.id)
+      .maybeSingle()
+    if (refundReadError) return NextResponse.json({ error: refundReadError.message }, { status: 500 })
+
+    if (!refundRow) {
+      const createdRefund = await admin
+        .from('booking_cancellation_refunds')
+        .insert({ cancellation_id: cancellation.id, payment_id: payment.id, requested_amount: requestedAmount })
+        .select('*')
+        .single()
+      if (createdRefund.error) return NextResponse.json({ error: createdRefund.error.message }, { status: 409 })
+      refundRow = createdRefund.data
+    }
+    if (refundRow.status === 'confirmada') {
+      refundResults.push(refundRow.gateway_response || {})
+      continue
+    }
+
+    if (requestedAmount === 0) {
+      const noRefund = { type: 'NO_REFUND', reason: 'Anticipo retenido según condiciones aceptadas' }
+      await admin.from('booking_cancellation_refunds').update({
+        status: 'confirmada', refunded_amount: 0, gateway_response: noRefund,
+        confirmed_at: new Date().toISOString(), failure_reason: null,
+      }).eq('id', refundRow.id)
+      refundResults.push(noRefund)
+      continue
+    }
+
+    if (!payment.token) {
+      await admin.from('booking_cancellation_refunds').update({
+        status: 'fallida', failure_reason: 'El pago no tiene token Webpay.',
+      }).eq('id', refundRow.id)
+      await admin.from('booking_cancellations').update({ status: 'fallida' }).eq('id', cancellation.id)
+      return NextResponse.json({ error: 'Uno de los pagos no tiene token para efectuar la devolución.' }, { status: 502 })
+    }
+
+    await admin.from('booking_cancellation_refunds').update({ status: 'enviando', failure_reason: null }).eq('id', refundRow.id)
+    try {
+      const response = await getWebpayTransaction().refund(payment.token, requestedAmount)
+      const successful = response?.type === 'REVERSED' || response?.response_code === 0
+      if (!successful) throw new Error('Webpay rechazó la solicitud de devolución.')
+
+      await admin.from('booking_cancellation_refunds').update({
+        status: 'confirmada', refunded_amount: requestedAmount,
+        gateway_response: response, confirmed_at: new Date().toISOString(), failure_reason: null,
+      }).eq('id', refundRow.id)
+      await admin.from('payments').update({
+        status: requestedAmount === payment.amount ? 'reembolsado' : 'parcialmente_reembolsado',
+      }).eq('id', payment.id)
+      refundResults.push(response)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo realizar la devolución.'
+      await admin.from('booking_cancellation_refunds').update({
+        status: 'fallida', failure_reason: message.slice(0, 1000),
+      }).eq('id', refundRow.id)
+      await admin.from('booking_cancellations').update({
+        status: 'fallida', failure_reason: message.slice(0, 1000),
+      }).eq('id', cancellation.id)
+      return NextResponse.json({ error: message }, { status: 502 })
+    }
+  }
+
+  const gatewayResponse = { refunds: refundResults }
+  const confirmed = await admin.from('booking_cancellations').update({
+    status: 'reembolso_confirmado', gateway_response: gatewayResponse,
+    refund_confirmed_at: new Date().toISOString(), failure_reason: null,
+  }).eq('id', cancellation.id).select('*').single()
+  if (confirmed.error) return NextResponse.json({ error: confirmed.error.message }, { status: 500 })
+
+  const { data: result, error: finalizeError } = await admin.rpc(
+    'finalize_client_booking_cancellation',
+    { p_cancellation_id: cancellation.id, p_gateway_response: gatewayResponse },
+  )
+  if (finalizeError) {
+    return NextResponse.json({ error: 'Las devoluciones fueron confirmadas, pero falta finalizar la cancelación.' }, { status: 500 })
+  }
+
+  // La función histórica actualiza el pago de referencia. Restauramos el
+  // estado exacto de cada cuota usando el resultado individual de Webpay.
+  for (const payment of payments) {
+    const refunded = requestedRefundByPayment.get(payment.id) || 0
+    await admin.from('payments').update({
+      status: refunded === 0
+        ? 'pagado'
+        : refunded === payment.amount ? 'reembolsado' : 'parcialmente_reembolsado',
+    }).eq('id', payment.id)
+  }
+
+  await notifyCancellationSafely({
+    bookingId: booking.id,
+    cancellationId: cancellation.id,
+    refundAmount: quote.refundAmount,
+    providerCompensation: quote.providerCompensation,
+  })
+  return NextResponse.json({ ok: true, result, quote })
+}
 
 async function notifyCancellationSafely(input: Parameters<typeof notifyBookingCancelled>[0]) {
   try {
@@ -34,7 +265,7 @@ export async function POST(
 
   const { data: booking, error: bookingError } = await admin
     .from('bookings')
-    .select('id,code,client_id,event_date,event_time,status,total')
+    .select('id,code,client_id,event_date,event_time,status,total,payment_plan')
     .eq('id', id)
     .maybeSingle()
 
@@ -44,6 +275,10 @@ export async function POST(
   }
   if (!CANCELLABLE_STATUSES.includes(booking.status)) {
     return NextResponse.json({ error: 'Esta reserva ya no puede cancelarse desde el portal.' }, { status: 409 })
+  }
+
+  if (booking.payment_plan === 'deposit_balance') {
+    return cancelInstallmentBooking({ admin, booking, reason, userId: user.id })
   }
 
   const eventStartsAt = eventDateInSantiago(booking.event_date, booking.event_time)
