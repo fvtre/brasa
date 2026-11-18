@@ -1,6 +1,6 @@
 # 🔥 Brasa — Marketplace de servicios para eventos
 
-> Proyecto APT · Analista Programador · **Grupo 3**
+> Proyecto APT · Ingeniería en Informática · **Grupo 3**
 
 [![Aplicación](https://img.shields.io/badge/Aplicación-brasa--eventos.vercel.app-F4510B?style=for-the-badge)](https://brasa-eventos.vercel.app)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=nextdotjs)](https://nextjs.org/)
