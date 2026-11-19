@@ -12,7 +12,6 @@ export const maxDuration = 60
 const pageSize = 500
 const exportTables = [
   { name: 'profiles', orderBy: ['id'] },
-  { name: 'provider_categories', orderBy: ['provider_id', 'category_slug'] },
   { name: 'service_categories', orderBy: ['id'] },
   { name: 'service_providers', orderBy: ['id'] },
   { name: 'provider_category_gallery', orderBy: ['id'] },
@@ -114,6 +113,7 @@ async function createExportArchive(adminClient: ReturnType<typeof createAdminCli
         '',
         'Se incluye un CSV por tabla de negocio de public, con todos sus registros paginados.',
         'Se excluyen auth.* y las tablas push_subscriptions, push_delivery_events y push_event_deliveries.',
+        'Se excluye provider_categories porque no está creada en el script SQL del proyecto.',
         'Se omiten payments.token y las claves metadata.session_id y metadata.webpay_url.',
         'provider_payout_accounts incluye datos bancarios y RUT completos.',
         '',
