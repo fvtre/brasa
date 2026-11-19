@@ -17,6 +17,10 @@ function LoginPageContent() {
   const [password, setPassword] = React.useState('')
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState(params.get('error') || '')
+  const [needsConfirmation, setNeedsConfirmation] = React.useState(false)
+  const [resendBusy, setResendBusy] = React.useState(false)
+  const [resendMessage, setResendMessage] = React.useState('')
+  const [resendError, setResendError] = React.useState('')
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -24,6 +28,9 @@ function LoginPageContent() {
 
     setBusy(true)
     setError('')
+    setNeedsConfirmation(false)
+    setResendMessage('')
+    setResendError('')
 
     try {
       const { data, error: loginError } = await supabase.auth.signInWithPassword({
@@ -52,11 +59,36 @@ function LoginPageContent() {
         setError('Correo o contraseña incorrectos.')
       } else if (lower.includes('email not confirmed')) {
         setError('Debes confirmar tu correo antes de ingresar.')
+        setNeedsConfirmation(true)
       } else {
         setError(message)
       }
 
       setBusy(false)
+    }
+  }
+
+  async function resendConfirmation() {
+    if (!email.trim() || resendBusy) return
+
+    setResendBusy(true)
+    setResendMessage('')
+    setResendError('')
+
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback?next=/cuenta`
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim(),
+        options: { emailRedirectTo: redirectTo },
+      })
+
+      if (resendError) throw resendError
+      setResendMessage('Solicitamos otro correo de confirmación. Revisa también la carpeta de spam.')
+    } catch (err: any) {
+      setResendError(String(err?.message || 'No se pudo reenviar el correo de confirmación.'))
+    } finally {
+      setResendBusy(false)
     }
   }
 
@@ -81,14 +113,28 @@ function LoginPageContent() {
                 required
                 disabled={busy}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  setNeedsConfirmation(false)
+                  setResendMessage('')
+                  setResendError('')
+                }}
                 placeholder="tu@correo.cl"
               />
             </label>
 
-            <label className="grid gap-1.5 text-sm">
-              Contraseña
+            <div className="grid gap-1.5 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="login-password">Contraseña</label>
+                <Link
+                  href="/recuperar-contrasena"
+                  className="text-xs font-semibold text-primary hover:underline"
+                >
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
               <Input
+                id="login-password"
                 type="password"
                 autoComplete="current-password"
                 required
@@ -98,12 +144,26 @@ function LoginPageContent() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
               />
-            </label>
+            </div>
 
             {error && (
-              <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                {error}
-              </p>
+              <div className="space-y-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                <p>{error}</p>
+                {needsConfirmation && (
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      disabled={resendBusy || !email.trim()}
+                      onClick={resendConfirmation}
+                      className="font-semibold underline underline-offset-2 disabled:opacity-50"
+                    >
+                      {resendBusy ? 'Reenviando...' : 'Reenviar correo de confirmación'}
+                    </button>
+                    {resendMessage && <p role="status">{resendMessage}</p>}
+                    {resendError && <p role="alert">{resendError}</p>}
+                  </div>
+                )}
+              </div>
             )}
 
             <button
