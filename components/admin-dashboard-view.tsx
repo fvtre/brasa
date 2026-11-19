@@ -13,6 +13,7 @@ import {
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { AdminDashboardExport } from '@/components/admin-dashboard-export'
 import { formatCLP } from '@/lib/format'
 
 export type AdminDashboardData = {
@@ -28,6 +29,21 @@ export type AdminDashboardData = {
   paymentRevenueThirtyDays: number
   cancellationCount: number
   totalBookings: number
+  repeatClients: number
+  monthlyBookings: { label: string; count: number }[]
+  topCategories: { name: string; bookings: number; amount: number }[]
+  topClients: { id?: string; name: string; bookings: number }[]
+  exportCategories: { name: string; bookings: number; amount: number }[]
+  exportClients: { name: string; bookings: number }[]
+  exportBookings: {
+    code: string
+    createdAt: string
+    eventDate: string
+    eventName: string
+    status: string
+    total: number
+    clientName: string
+  }[]
   statusSummary: { label: string; count: number }[]
   recent: {
     id: string
@@ -48,6 +64,8 @@ export function AdminDashboardView({
   preview?: boolean
 }) {
   const maxStatusCount = Math.max(1, ...data.statusSummary.map(({ count }) => count))
+  const maxMonthlyBookings = Math.max(1, ...data.monthlyBookings.map(({ count }) => count))
+  const maxCategoryBookings = Math.max(1, ...data.topCategories.map(({ bookings }) => bookings))
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10">
@@ -59,10 +77,29 @@ export function AdminDashboardView({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-primary">Administración</p>
-          <h1 className="mt-1 text-3xl font-extrabold">Dashboard ejecutivo</h1>
+          <h1 className="mt-1 text-3xl font-extrabold">Dashboard</h1>
           <p className="mt-2 text-muted-foreground">Estado comercial y operativo de Brasa.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <AdminDashboardExport
+            bookings={data.exportBookings}
+            categories={data.exportCategories}
+            clients={data.exportClients}
+            monthlyBookings={data.monthlyBookings}
+            metrics={[
+              { label: 'Usuarios activos', value: String(data.activeUsers) },
+              { label: 'Prestadores activos', value: String(data.activeProviders) },
+              { label: 'Reservas últimos 7 días', value: String(data.recentBookings) },
+              { label: 'Reservas últimos 30 días', value: String(data.bookingsThirtyDays) },
+              { label: 'Ingresos registrados (CLP)', value: String(data.collected) },
+              { label: 'Pagos pendientes (CLP)', value: String(data.pendingPayments) },
+              { label: 'Tasa de conversión', value: `${data.conversion}%` },
+              { label: 'Ingresos últimos 30 días (CLP)', value: String(data.paymentRevenueThirtyDays) },
+              { label: 'Reservas canceladas', value: String(data.cancellationCount) },
+              { label: 'Clientes recurrentes', value: String(data.repeatClients) },
+            ]}
+            preview={preview}
+          />
           <Button nativeButton={false} variant="outline" render={<Link href="/admin/usuarios" />}>
             <Users /> Usuarios
           </Button>
@@ -82,10 +119,56 @@ export function AdminDashboardView({
         <Kpi icon={CircleDollarSign} label="Ingresos registrados" value={formatCLP(data.collected)} detail={`${formatCLP(data.pendingPayments)} pendientes`} accent />
       </section>
 
-      <section className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <section className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi icon={TrendingUp} label="Tasa de conversión" value={`${data.conversion}%`} detail="Reservas confirmadas o completadas" />
         <Kpi icon={Clock3} label="Ingresos últimos 30 días" value={formatCLP(data.paymentRevenueThirtyDays)} detail="Pagos autorizados o pagados" />
         <Kpi icon={AlertTriangle} label="Reservas canceladas" value={String(data.cancellationCount)} detail={`${data.totalBookings} reservas totales`} />
+        <Kpi icon={Users} label="Clientes recurrentes" value={String(data.repeatClients)} detail="2 o más reservas confirmadas" />
+      </section>
+
+      <section className="mt-8 grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle>Reservas por mes</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid h-52 grid-cols-6 items-end gap-3 border-b border-l px-2">
+              {data.monthlyBookings.map(month => (
+                <div key={month.label} className="flex h-full flex-col items-center justify-end gap-2">
+                  <span className="text-xs font-semibold">{month.count}</span>
+                  <div
+                    className="w-full max-w-12 rounded-t-md bg-primary/80"
+                    style={{ height: `${Math.max(3, (month.count / maxMonthlyBookings) * 72)}%` }}
+                    role="img"
+                    aria-label={`${month.count} reservas`}
+                  />
+                  <span className="text-xs capitalize text-muted-foreground">{month.label}</span>
+                </div>
+              ))}
+            </div>
+            {data.monthlyBookings.every(month => month.count === 0) && (
+              <p className="pt-4 text-center text-sm text-muted-foreground">Aún no hay reservas en este período.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Categorías más solicitadas · 30 días</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            {data.topCategories.length ? data.topCategories.map(category => (
+              <div key={category.name}>
+                <div className="mb-1 flex justify-between gap-3 text-sm">
+                  <span className="truncate capitalize">{category.name}</span>
+                  <b>{category.bookings}</b>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary"
+                    style={{ width: `${Math.max(3, (category.bookings / maxCategoryBookings) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )) : <p className="py-8 text-center text-sm text-muted-foreground">Sin servicios solicitados en los últimos 30 días.</p>}
+          </CardContent>
+        </Card>
       </section>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_340px]">
@@ -115,6 +198,18 @@ export function AdminDashboardView({
         </Card>
 
         <div className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Clientes recurrentes</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {data.topClients.length ? data.topClients.map(client => (
+                <div key={client.id || client.name} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="truncate">{client.name}</span>
+                  <span className="shrink-0 text-muted-foreground">{client.bookings} reservas</span>
+                </div>
+              )) : <p className="py-4 text-center text-sm text-muted-foreground">Aún no hay clientes con reservas recurrentes.</p>}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader><CardTitle>Estado de reservas</CardTitle></CardHeader>
             <CardContent className="space-y-4">

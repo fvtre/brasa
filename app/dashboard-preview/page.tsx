@@ -17,6 +17,36 @@ const previewData: AdminDashboardData = {
   paymentRevenueThirtyDays: 3_120_000,
   cancellationCount: 9,
   totalBookings: 119,
+  repeatClients: 14,
+  monthlyBookings: [
+    { label: 'jun', count: 8 },
+    { label: 'jul', count: 12 },
+    { label: 'ago', count: 9 },
+    { label: 'sept', count: 16 },
+    { label: 'oct', count: 11 },
+    { label: 'nov', count: 18 },
+  ],
+  topCategories: [
+    { name: 'Parrilleros', bookings: 18, amount: 1_260_000 },
+    { name: 'Catering', bookings: 14, amount: 1_050_000 },
+    { name: 'Bartenders', bookings: 11, amount: 715_000 },
+  ],
+  topClients: [
+    { name: 'Camila R.', bookings: 4 },
+    { name: 'Diego M.', bookings: 3 },
+    { name: 'Francisca P.', bookings: 2 },
+  ],
+  exportCategories: [
+    { name: 'Parrilleros', bookings: 18, amount: 1_260_000 },
+    { name: 'Catering', bookings: 14, amount: 1_050_000 },
+    { name: 'Bartenders', bookings: 11, amount: 715_000 },
+  ],
+  exportClients: [
+    { name: 'Camila R.', bookings: 4 },
+    { name: 'Diego M.', bookings: 3 },
+    { name: 'Francisca P.', bookings: 2 },
+  ],
+  exportBookings: [],
   statusSummary: [
     { label: 'Pendientes', count: 18 },
     { label: 'Esperando confirmación', count: 12 },
