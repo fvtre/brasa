@@ -1,21 +1,109 @@
-import Link from 'next/link'
-import { BriefcaseBusiness, CalendarDays, DollarSign, ShieldCheck, Users } from 'lucide-react'
 import { requireRole } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { Card,CardContent,CardHeader,CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { formatCLP } from '@/lib/format'
+import { AdminDashboardView } from '@/components/admin-dashboard-view'
 
-export default async function AdminDashboard(){
- await requireRole(['administrador']); const supabase=await createClient()
- const [{count:users},{count:providers},{count:bookings},{data:payments},{data:recent}]=await Promise.all([
-  supabase.from('profiles').select('*',{count:'exact',head:true}),
-  supabase.from('service_providers').select('*',{count:'exact',head:true}),
-  supabase.from('bookings').select('*',{count:'exact',head:true}),
-  supabase.from('payments').select('amount,status'),
-  supabase.from('bookings').select('id,code,event_name,event_date,status,total,client:profiles!bookings_client_id_fkey(full_name)').order('created_at',{ascending:false}).limit(8),
- ])
- const paid=(payments||[]).filter((p:any)=>['pagado','autorizado'].includes(p.status)).reduce((s:number,p:any)=>s+(p.amount||0),0)
- return <div className="mx-auto max-w-7xl px-4 py-10"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-semibold text-primary">Administración</p><h1 className="mt-1 text-3xl font-extrabold">Panel general Brasa</h1><p className="mt-2 text-muted-foreground">Operación, usuarios, prestadores y reservas.</p></div><div className="flex gap-2"><Button nativeButton={false} variant="outline" render={<Link href="/admin/usuarios"/>}><Users/>Usuarios</Button><Button nativeButton={false} render={<Link href="/admin/prestadores"/>}><BriefcaseBusiness/>Prestadores</Button></div></div><div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4"><Kpi icon={Users} label="Usuarios" value={String(users||0)}/><Kpi icon={BriefcaseBusiness} label="Prestadores" value={String(providers||0)}/><Kpi icon={CalendarDays} label="Reservas" value={String(bookings||0)}/><Kpi icon={DollarSign} label="Pagos registrados" value={formatCLP(paid)}/></div><div className="mt-8 grid gap-6 lg:grid-cols-[1fr_340px]"><Card><CardHeader><CardTitle>Reservas recientes</CardTitle></CardHeader><CardContent className="space-y-3">{(recent||[]).map((b:any)=><div key={b.id} className="flex items-center justify-between gap-3 rounded-xl border p-4"><div><div className="flex items-center gap-2"><b>{b.event_name}</b><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] capitalize">{b.status.replaceAll('_',' ')}</span></div><p className="mt-1 text-xs text-muted-foreground">{b.code} · {b.event_date} · {b.client?.full_name||'Cliente'}</p></div><b>{formatCLP(b.total)}</b></div>)}{(recent||[]).length===0&&<p className="py-10 text-center text-sm text-muted-foreground">Sin reservas todavía.</p>}</CardContent></Card><div className="space-y-4"><Card><CardContent className="p-5"><ShieldCheck className="size-5 text-primary"/><h2 className="mt-3 font-bold">Verificación de prestadores</h2><p className="mt-1 text-sm text-muted-foreground">El administrador puede activar, destacar y verificar perfiles profesionales.</p><Button nativeButton={false} variant="outline" className="mt-4 w-full" render={<Link href="/admin/prestadores"/>}>Gestionar</Button></CardContent></Card><Card><CardContent className="p-5"><Users className="size-5 text-primary"/><h2 className="mt-3 font-bold">Roles</h2><p className="mt-1 text-sm text-muted-foreground">Cliente, Prestador y Administrador están separados mediante RLS en Supabase.</p></CardContent></Card></div></div></div>
+export const dynamic = 'force-dynamic'
+
+type DashboardBooking = {
+  id: string
+  code: string
+  event_name: string
+  event_date: string
+  status: string
+  total: number
+  created_at: string
+  client: { full_name: string | null } | Array<{ full_name: string | null }> | null
 }
-function Kpi({icon:Icon,label,value}:{icon:any;label:string;value:string}){return <Card><CardContent className="p-4"><div className="flex items-center justify-between text-muted-foreground"><span className="text-xs">{label}</span><Icon className="size-4"/></div><p className="mt-2 text-2xl font-extrabold">{value}</p></CardContent></Card>}
+
+export default async function AdminDashboard() {
+  await requireRole(['administrador'])
+  const supabase = await createClient()
+
+  const [usersResult, providersResult, bookingsResult, paymentsResult, recentResult] = await Promise.all([
+    supabase.from('profiles').select('role,active,created_at'),
+    supabase.from('service_providers').select('active,verified'),
+    supabase.from('bookings').select('status,total,created_at,event_date'),
+    supabase.from('payments').select('amount,status,created_at'),
+    supabase.from('bookings').select(`
+      id,code,event_name,event_date,status,total,created_at,
+      client:profiles!bookings_client_id_fkey(full_name)
+    `).order('created_at', { ascending: false }).limit(8),
+  ])
+
+  if (usersResult.error) throw new Error(usersResult.error.message)
+  if (providersResult.error) throw new Error(providersResult.error.message)
+  if (bookingsResult.error) throw new Error(bookingsResult.error.message)
+  if (paymentsResult.error) throw new Error(paymentsResult.error.message)
+  if (recentResult.error) throw new Error(recentResult.error.message)
+
+  const users = usersResult.data || []
+  const providers = providersResult.data || []
+  const bookings = bookingsResult.data || []
+  const payments = paymentsResult.data || []
+  const recent = (recentResult.data || []) as unknown as DashboardBooking[]
+
+  const activeUsers = users.filter(user => user.active).length
+  const clients = users.filter(user => user.role === 'cliente').length
+  const activeProviders = providers.filter(provider => provider.active).length
+  const verifiedProviders = providers.filter(provider => provider.verified).length
+  const collected = payments
+    .filter(payment => ['pagado', 'autorizado'].includes(payment.status))
+    .reduce((sum, payment) => sum + (payment.amount || 0), 0)
+  const pendingPayments = payments
+    .filter(payment => payment.status === 'pendiente')
+    .reduce((sum, payment) => sum + (payment.amount || 0), 0)
+
+  const now = Date.now()
+  const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000
+  const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000
+  const recentBookings = bookings.filter(booking => new Date(booking.created_at).getTime() >= sevenDaysAgo).length
+  const bookingsThirtyDays = bookings.filter(booking => new Date(booking.created_at).getTime() >= thirtyDaysAgo).length
+  const paymentRevenueThirtyDays = payments
+    .filter(payment =>
+      ['pagado', 'autorizado'].includes(payment.status)
+      && new Date(payment.created_at).getTime() >= thirtyDaysAgo
+    )
+    .reduce((sum, payment) => sum + (payment.amount || 0), 0)
+
+  const confirmedOrComplete = bookings.filter(booking =>
+    ['confirmada', 'en_preparacion', 'en_curso', 'completada'].includes(booking.status)
+  ).length
+  const cancellationCount = bookings.filter(booking => booking.status === 'cancelada').length
+  const conversion = bookings.length ? Math.round((confirmedOrComplete / bookings.length) * 100) : 0
+
+  const statusSummary = [
+    ['Pendientes', bookings.filter(booking => booking.status === 'pendiente').length],
+    ['Esperando confirmación', bookings.filter(booking => booking.status === 'esperando_confirmacion').length],
+    ['Confirmadas', bookings.filter(booking => ['confirmada', 'esperando_pago', 'en_preparacion'].includes(booking.status)).length],
+    ['En curso', bookings.filter(booking => booking.status === 'en_curso').length],
+    ['Completadas', bookings.filter(booking => booking.status === 'completada').length],
+    ['Canceladas', cancellationCount],
+  ] as const
+  const maxStatusCount = Math.max(1, ...statusSummary.map(([, count]) => count))
+
+  const dashboardRecent = recent.map(booking => {
+    const client = Array.isArray(booking.client) ? booking.client[0] : booking.client
+    return { ...booking, clientName: client?.full_name || null }
+  })
+
+  return (
+    <AdminDashboardView
+      data={{
+        activeUsers,
+        clients,
+        activeProviders,
+        verifiedProviders,
+        recentBookings,
+        bookingsThirtyDays,
+        collected,
+        pendingPayments,
+        conversion,
+        paymentRevenueThirtyDays,
+        cancellationCount,
+        totalBookings: bookings.length,
+        statusSummary: statusSummary.map(([label, count]) => ({ label, count })),
+        recent: dashboardRecent,
+      }}
+    />
+  )
+}

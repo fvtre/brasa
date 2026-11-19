@@ -18,6 +18,10 @@ export default function RegisterPage() {
   const [busy, setBusy] = React.useState(false)
   const [message, setMessage] = React.useState('')
   const [error, setError] = React.useState('')
+  const [pendingConfirmationEmail, setPendingConfirmationEmail] = React.useState('')
+  const [resendBusy, setResendBusy] = React.useState(false)
+  const [resendMessage, setResendMessage] = React.useState('')
+  const [resendError, setResendError] = React.useState('')
   const passwordIsStrong =
     form.password.length >= 10 &&
     /[a-z]/.test(form.password) &&
@@ -67,10 +71,35 @@ export default function RegisterPage() {
           ? 'Cuenta de prestador creada. Revisa tu correo para confirmar el acceso.'
           : 'Cuenta creada. Revisa tu correo para confirmar el acceso.'
       )
+      setPendingConfirmationEmail(form.email.trim())
       setBusy(false)
     } catch (err: any) {
       setError(String(err?.message || 'No se pudo crear la cuenta.'))
       setBusy(false)
+    }
+  }
+
+  async function resendConfirmation() {
+    if (!pendingConfirmationEmail || resendBusy) return
+
+    setResendBusy(true)
+    setResendMessage('')
+    setResendError('')
+
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback?next=/cuenta`
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: pendingConfirmationEmail,
+        options: { emailRedirectTo: redirectTo },
+      })
+
+      if (resendError) throw resendError
+      setResendMessage('Solicitamos otro correo de confirmación. Revisa también la carpeta de spam.')
+    } catch (err: any) {
+      setResendError(String(err?.message || 'No se pudo reenviar el correo de confirmación.'))
+    } finally {
+      setResendBusy(false)
     }
   }
 
@@ -167,7 +196,23 @@ export default function RegisterPage() {
               <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>
             )}
             {message && (
-              <p className="rounded-lg bg-primary/10 p-3 text-sm text-primary">{message}</p>
+              <div className="space-y-3 rounded-lg bg-primary/10 p-3 text-sm text-primary">
+                <p>{message}</p>
+                {pendingConfirmationEmail && (
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      disabled={resendBusy}
+                      onClick={resendConfirmation}
+                      className="font-semibold underline underline-offset-2 disabled:opacity-50"
+                    >
+                      {resendBusy ? 'Reenviando...' : 'Reenviar correo de confirmación'}
+                    </button>
+                    {resendMessage && <p role="status">{resendMessage}</p>}
+                    {resendError && <p role="alert" className="text-destructive">{resendError}</p>}
+                  </div>
+                )}
+              </div>
             )}
 
             <button
