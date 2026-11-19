@@ -7,7 +7,7 @@ export const CATEGORIES: Category[] = [
     icon: "Flame",
     tagline: "Asados y parrilla",
     description: "Maestros del fuego para tu asado: cortes, punto perfecto y show en vivo.",
-    image: "/images/cat-parrilleros.png",
+    image: "/images/cat-parrilleros.jpg",
     priceFrom: 70000,
   },
   {
