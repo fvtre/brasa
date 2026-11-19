@@ -59,104 +59,123 @@ export async function GET() {
     return NextResponse.json({ error: 'La exportación no está configurada en el servidor.' }, { status: 500 })
   }
 
-  const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
-      let closed = false
-      const archive = new Zip((error, chunk, final) => {
-        if (error) {
-          closed = true
-          controller.error(new Error('No se pudo generar el archivo ZIP.'))
-          return
-        }
-        if (chunk.length) controller.enqueue(chunk)
-        if (final) {
-          closed = true
-          controller.close()
-        }
-      })
+  try {
+    const chunks = await createExportArchive(adminClient)
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(chunk)
+        controller.close()
+      },
+    })
 
-      void (async () => {
-        const manifest = [
-          'Exportación de datos de Brasa',
-          `Generada: ${new Date().toISOString()}`,
-          '',
-          'Se incluye un CSV por tabla de negocio de public, con todos sus registros paginados.',
-          'Se excluyen auth.* y las tablas push_subscriptions, push_delivery_events y push_event_deliveries.',
-          'Se omiten payments.token y las claves metadata.session_id y metadata.webpay_url.',
-          'provider_payout_accounts incluye datos bancarios y RUT completos.',
-          '',
-          'Tablas incluidas:',
-          ...exportTables.map(table => table.name),
-        ].join('\r\n')
-        addZipFile(archive, 'LEEME.txt', new TextEncoder().encode(manifest))
-
-        for (const table of exportTables) {
-          const file = new ZipDeflate(`${table.name}.csv`, { level: 6 })
-          archive.add(file)
-          let offset = 0
-          let header: string[] | null = null
-
-          while (true) {
-            let query = adminClient.from(table.name).select('*')
-            for (const column of table.orderBy) {
-              query = query.order(column, { ascending: true })
-            }
-            const { data, error } = await query.range(offset, offset + pageSize - 1)
-            if (error) throw new Error(`Falló la lectura de la tabla ${table.name}: ${error.message}`)
-
-            const rows = (data || []).map(row => {
-              const record = { ...(row as Record<string, unknown>) }
-              if ('excludedColumns' in table) {
-                for (const column of table.excludedColumns) delete record[column]
-              }
-              if (table.name === 'payments' && record.metadata && typeof record.metadata === 'object') {
-                const metadata = { ...(record.metadata as Record<string, unknown>) }
-                delete metadata.session_id
-                delete metadata.webpay_url
-                record.metadata = metadata
-              }
-              return record
-            })
-
-            if (rows.length) {
-              if (!header) {
-                header = Object.keys(rows[0])
-                file.push(encodeCsvRow(header, true), false)
-              }
-              for (const row of rows) {
-                file.push(encodeCsvRow(header.map(column => row[column])), false)
-              }
-            }
-
-            if (rows.length < pageSize) break
-            offset += pageSize
-          }
-
-          file.push(new Uint8Array(0), true)
-        }
-        archive.end()
-      })().catch(error => {
-        console.error('Falló la exportación completa de datos:', error)
-        if (!closed) {
-          closed = true
-          controller.error(new Error('No se pudo completar la exportación. Revisa los registros del servidor.'))
-        }
-      })
-    },
-  })
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'application/zip',
-      'Content-Disposition': `attachment; filename="brasa-datos-${new Date().toISOString().slice(0, 10)}.zip"`,
-      'Cache-Control': 'private, no-store',
-      'X-Content-Type-Options': 'nosniff',
-    },
-  })
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'application/zip',
+        'Content-Disposition': `attachment; filename="brasa-datos-${new Date().toISOString().slice(0, 10)}.zip"`,
+        'Cache-Control': 'private, no-store',
+        'X-Content-Type-Options': 'nosniff',
+      },
+    })
+  } catch (error) {
+    console.error('Falló la exportación completa de datos:', error)
+    const message = error instanceof ExportTableError
+      ? `No se pudo exportar la tabla ${error.tableName}. No se generó ningún archivo.`
+      : 'No se pudo completar la exportación. No se generó ningún archivo.'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }
 
 const encoder = new TextEncoder()
 const formulaPrefix = /^[\s]*[=+\-@]/
+
+async function createExportArchive(adminClient: ReturnType<typeof createAdminClient>) {
+  return new Promise<Uint8Array[]>((resolve, reject) => {
+    const chunks: Uint8Array[] = []
+    let settled = false
+    const archive = new Zip((error, chunk, final) => {
+      if (error) {
+        if (!settled) {
+          settled = true
+          reject(error)
+        }
+        return
+      }
+      if (chunk.length) chunks.push(chunk)
+      if (final && !settled) {
+        settled = true
+        resolve(chunks)
+      }
+    })
+
+    void (async () => {
+      const manifest = [
+        'Exportación de datos de Brasa',
+        `Generada: ${new Date().toISOString()}`,
+        '',
+        'Se incluye un CSV por tabla de negocio de public, con todos sus registros paginados.',
+        'Se excluyen auth.* y las tablas push_subscriptions, push_delivery_events y push_event_deliveries.',
+        'Se omiten payments.token y las claves metadata.session_id y metadata.webpay_url.',
+        'provider_payout_accounts incluye datos bancarios y RUT completos.',
+        '',
+        'Tablas incluidas:',
+        ...exportTables.map(table => table.name),
+      ].join('\r\n')
+      addZipFile(archive, 'LEEME.txt', new TextEncoder().encode(manifest))
+
+      for (const table of exportTables) {
+        const file = new ZipDeflate(`${table.name}.csv`, { level: 6 })
+        archive.add(file)
+        let offset = 0
+        let header: string[] | null = null
+
+        while (true) {
+          let query = adminClient.from(table.name).select('*')
+          for (const column of table.orderBy) {
+            query = query.order(column, { ascending: true })
+          }
+          const { data, error } = await query.range(offset, offset + pageSize - 1)
+          if (error) throw new ExportTableError(table.name, error.message)
+
+          const rows = (data || []).map(row => {
+            const record = { ...(row as Record<string, unknown>) }
+            if ('excludedColumns' in table) {
+              for (const column of table.excludedColumns) delete record[column]
+            }
+            if (table.name === 'payments' && record.metadata && typeof record.metadata === 'object') {
+              const metadata = { ...(record.metadata as Record<string, unknown>) }
+              delete metadata.session_id
+              delete metadata.webpay_url
+              record.metadata = metadata
+            }
+            return record
+          })
+
+          if (rows.length) {
+            if (!header) {
+              header = Object.keys(rows[0])
+              file.push(encodeCsvRow(header, true), false)
+            }
+            for (const row of rows) {
+              file.push(encodeCsvRow(header.map(column => row[column])), false)
+            }
+          }
+
+          if (rows.length < pageSize) break
+          offset += pageSize
+        }
+
+        file.push(new Uint8Array(0), true)
+      }
+      archive.end()
+    })().catch(error => {
+      archive.terminate()
+      if (!settled) {
+        settled = true
+        reject(error)
+      }
+    })
+  })
+}
 
 function encodeCsvRow(values: unknown[], includeBom = false) {
   const line = values.map(value => {
@@ -180,4 +199,11 @@ function addZipFile(archive: Zip, name: string, content: Uint8Array) {
   const file = new ZipDeflate(name, { level: 6 })
   archive.add(file)
   file.push(content, true)
+}
+
+class ExportTableError extends Error {
+  constructor(readonly tableName: string, message: string) {
+    super(message)
+    this.name = 'ExportTableError'
+  }
 }
