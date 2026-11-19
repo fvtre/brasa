@@ -16,7 +16,7 @@ export const CATEGORIES: Category[] = [
     icon: "Martini",
     tagline: "Coctelería & barra",
     description: "Coctelería de autor, barra montada y tragos de bienvenida para tus invitados.",
-    image: "/images/cat-bartenders.png",
+    image: "/images/cat-bartenders.jpg",
     priceFrom: 65000,
   },
   {
@@ -25,7 +25,7 @@ export const CATEGORIES: Category[] = [
     icon: "ConciergeBell",
     tagline: "Atención de invitados",
     description: "Servicio de garzones profesionales para atención de mesas y bebidas.",
-    image: "/images/cat-garzones.png",
+    image: "/images/cat-garzones.jpg",
     priceFrom: 40000,
   },
   {
@@ -34,7 +34,7 @@ export const CATEGORIES: Category[] = [
     icon: "UtensilsCrossed",
     tagline: "Comida para el evento",
     description: "Tablas, picoteos, banquetería y menús a medida para cualquier ocasión.",
-    image: "/images/cat-catering.png",
+    image: "/images/cat-catering.jpg",
     priceFrom: 90000,
   },
   {
@@ -43,7 +43,7 @@ export const CATEGORIES: Category[] = [
     icon: "CakeSlice",
     tagline: "Tortas & dulces",
     description: "Tortas personalizadas, mesas dulces y postres para celebraciones.",
-    image: "/images/cat-pasteleria.png",
+    image: "/images/cat-pasteleria.jpg",
     priceFrom: 35000,
   },
   {
@@ -52,7 +52,7 @@ export const CATEGORIES: Category[] = [
     icon: "Disc3",
     tagline: "Música y ambiente",
     description: "DJ con equipo profesional, iluminación y la mejor música para tu fiesta.",
-    image: "/images/cat-dj.png",
+    image: "/images/cat-dj.jpg",
     priceFrom: 120000,
   },
   {
@@ -61,7 +61,7 @@ export const CATEGORIES: Category[] = [
     icon: "PartyPopper",
     tagline: "Ambientación",
     description: "Globos, arcos, centros de mesa y ambientación temática completa.",
-    image: "/images/cat-decoracion.png",
+    image: "/images/cat-decoracion.jpg",
     priceFrom: 55000,
   },
   {
@@ -70,7 +70,7 @@ export const CATEGORIES: Category[] = [
     icon: "Camera",
     tagline: "Foto & video",
     description: "Cobertura fotográfica y de video para inmortalizar tu evento.",
-    image: "/images/cat-fotografia.png",
+    image: "/images/cat-fotografia.jpg",
     priceFrom: 100000,
   },
   {
@@ -79,16 +79,16 @@ export const CATEGORIES: Category[] = [
     icon: "Armchair",
     tagline: "Equipamiento",
     description: "Arriendo de mesas, sillas, toldos, vajilla y todo el equipamiento.",
-    image: "/images/cat-mobiliario.png",
+    image: "/images/cat-mobiliario-terraza.jpg",
     priceFrom: 45000,
   },
   {
     slug: "parrilleros-veganos",
     name: "Parrilleros Veganos",
     icon: "Flame",
-    tagline: "Asados y parrilla",
-    description: "Maestros del fuego para tu asado: cortes, punto perfecto y show en vivo.",
-    image: "/images/cat-parrilleros.png",
+    tagline: "Parrilla plant-based",
+    description: "Alternativas vegetales a la parrilla y preparaciones plant-based para compartir.",
+    image: "/images/cat-parrilleros-veganos.jpg",
     priceFrom: 70000,
   },
 ]
